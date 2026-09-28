@@ -136,7 +136,7 @@ proyecto/
 ## Estado actual
 
 - [x] Revisión sistemática y borrador del paper (v1)
-- [ ] Fase 0 — Entorno
+- [x] Fase 0 — Entorno (2026-09-27, `results/env_check.json`)
 - [ ] Fase 1 — Datos
 - [ ] Fase 2 — Maestro
 - [ ] Fase 3 — Alumno base

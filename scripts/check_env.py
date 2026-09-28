@@ -30,6 +30,9 @@ def chequeo(nombre: str, critico: bool = True):
     def envoltura(fn):
         try:
             ok, detalle = fn()
+        except ModuleNotFoundError as e:
+            # Paquete no instalado: basta con el mensaje, sin traza
+            ok, detalle = False, f"no instalado ({e.name})"
         except Exception as e:  # noqa: BLE001
             ok, detalle = False, f"{type(e).__name__}: {e}"
             traceback.print_exc()
@@ -116,12 +119,12 @@ def _cientificas():
     return True, f"scipy {scipy.__version__}, pandas {pandas.__version__}"
 
 
-@chequeo("RAM visible (>= 24 GB recomendado)", critico=False)
+@chequeo("RAM visible (>= 20 GB recomendado)", critico=False)
 def _ram():
     import psutil
 
     gb = psutil.virtual_memory().total / 2**30
-    return gb >= 24, f"{gb:.1f} GB (en WSL se ajusta con memory= en %UserProfile%\\.wslconfig)"
+    return gb >= 20, f"{gb:.1f} GB (en WSL se ajusta con memory= en %UserProfile%\\.wslconfig)"
 
 
 @chequeo("Proyecto fuera de /mnt (E/S rápida)", critico=False)

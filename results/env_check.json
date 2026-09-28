@@ -1,0 +1,89 @@
+{
+  "entorno": {
+    "fecha": "2026-09-27T22:00:22",
+    "python": "3.13.15",
+    "plataforma": "Linux-6.6.114.1-microsoft-standard-WSL2-x86_64-with-glibc2.43",
+    "cpu": "x86_64",
+    "git_commit": "6a788e7ba22ff5428487957d282c12e8814eebb8-dirty",
+    "paquetes": {
+      "ultralytics": "8.4.164",
+      "torch": "2.14.0+cu130",
+      "torchvision": "0.29.0+cu130",
+      "tensorrt": null,
+      "tensorrt-cu13": "10.16.1.11",
+      "openvino": "2026.4.0",
+      "nncf": "3.4.0",
+      "onnx": "1.23.0",
+      "onnxslim": "0.1.96",
+      "numpy": "2.4.6",
+      "scipy": "1.18.1",
+      "pandas": "3.0.6",
+      "pycocotools": "2.0.11"
+    },
+    "cuda_torch": "13.0",
+    "cudnn": 92400,
+    "gpu": "NVIDIA GeForce RTX 4060"
+  },
+  "chequeos": [
+    {
+      "nombre": "Python 3.13",
+      "ok": true,
+      "detalle": "3.13.15",
+      "critico": true
+    },
+    {
+      "nombre": "PyTorch + CUDA",
+      "ok": true,
+      "detalle": "torch 2.14.0+cu130, CUDA 13.0, NVIDIA GeForce RTX 4060 (8.0 GB)",
+      "critico": true
+    },
+    {
+      "nombre": "TensorRT",
+      "ok": true,
+      "detalle": "TensorRT 10.16.1.11, FP16=True, INT8=True",
+      "critico": true
+    },
+    {
+      "nombre": "OpenVINO",
+      "ok": true,
+      "detalle": "OpenVINO 2026.4.0-22959-99c81491cc3-releases/2026/4, dispositivos=['CPU'], CPU=12th Gen Intel(R) Core(TM) i7-12700KF",
+      "critico": true
+    },
+    {
+      "nombre": "NNCF (INT8 OpenVINO)",
+      "ok": true,
+      "detalle": "nncf 3.4.0",
+      "critico": true
+    },
+    {
+      "nombre": "ultralytics",
+      "ok": true,
+      "detalle": "ultralytics 8.4.164",
+      "critico": true
+    },
+    {
+      "nombre": "ONNX",
+      "ok": true,
+      "detalle": "onnx 1.23.0, onnxslim 0.1.96",
+      "critico": true
+    },
+    {
+      "nombre": "pycocotools / scipy / pandas",
+      "ok": true,
+      "detalle": "scipy 1.18.1, pandas 3.0.6",
+      "critico": true
+    },
+    {
+      "nombre": "RAM visible (>= 24 GB recomendado)",
+      "ok": false,
+      "detalle": "23.5 GB (en WSL se ajusta con memory= en %UserProfile%\\.wslconfig)",
+      "critico": false
+    },
+    {
+      "nombre": "Proyecto fuera de /mnt (E/S rápida)",
+      "ok": false,
+      "detalle": "/mnt/d/1-Personal/5-Studies/MaestriaIA/S2/Vision de computadora/proyecto_yolo/Codigo -> lectura de datos lenta en WSL",
+      "critico": false
+    }
+  ]
+}

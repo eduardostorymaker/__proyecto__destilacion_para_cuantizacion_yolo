@@ -21,7 +21,8 @@ onnx==1.23.0
 onnxslim==0.1.96
 
 # Datos, estadística y reporte
-numpy==2.5.3
+# numpy < 2.5 por restricción de nncf 3.4.0
+numpy==2.4.6
 scipy==1.18.1
 pandas==3.0.6
 matplotlib==3.11.2

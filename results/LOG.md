@@ -9,4 +9,9 @@
   TensorRT 10.16.1.11 (rama 10, PTQ con IInt8EntropyCalibrator2), OpenVINO 2026.4.0, NNCF 3.4.0.
 - Dataset movido de `dataset/` a `data/raw/` (RDD2022/India ya descomprimido:
   train = 7 706 imágenes + 7 706 XML; test = 1 959 imágenes sin etiquetas).
-- Pendiente: ejecutar `scripts/setup_wsl.sh` y `scripts/check_env.py` en WSL.
+- Incidencia: numpy 2.5.3 chocaba con nncf 3.4.0 (exige numpy<2.5) → numpy fijado en 2.4.6.
+- `scripts/setup_wsl.sh` ejecutado; lock completo en `requirements.lock.txt`.
+- `scripts/check_env.py`: todo OK → torch 2.14.0+cu130 (CUDA 13.0, RTX 4060 8 GB),
+  TensorRT 10.16.1.11 (FP16 e INT8 disponibles), OpenVINO 2026.4.0 (CPU i7-12700KF),
+  NNCF 3.4.0, ultralytics 8.4.164, onnx 1.23.0. RAM visible en WSL: 23.5 GB.
+- **Resultado: Fase 0 completada.**

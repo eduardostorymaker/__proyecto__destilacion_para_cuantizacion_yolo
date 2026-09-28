@@ -28,7 +28,8 @@ fi
 
 echo ">> Creando venv Python ${PY_VERSION} en ${VENV_DIR}"
 uv python install "${PY_VERSION}"
-uv venv --python "${PY_VERSION}" "${VENV_DIR}"
+# --allow-existing: permite relanzar el script si una instalación previa falló a medias
+uv venv --allow-existing --python "${PY_VERSION}" "${VENV_DIR}"
 
 echo ">> Instalando dependencias"
 # index-strategy: permite tomar torch del índice de PyTorch y el resto de PyPI
