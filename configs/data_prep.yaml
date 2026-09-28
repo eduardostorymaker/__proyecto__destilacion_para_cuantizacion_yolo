@@ -6,8 +6,9 @@ yolo_dir: ~/datasets/rdd2022_india_yolo    # salida en formato YOLO (se regenera
 splits_dir: data/splits                    # listas de archivos por split (versionadas en git)
 
 # Clases del estudio; el índice YOLO es el orden de esta lista.
-# Cualquier otra etiqueta (D01, D11, D43, D44, D50, ...) se elimina y se registra.
-clases: [D00, D10, D20, D40]
+# Cualquier otra etiqueta (D01, D10, D11, D43, D44, D50, ...) se elimina y se registra.
+# D10 excluida (decisión 2026-09-27): solo 68 instancias en todo India, 14 en test -> AP inestable.
+clases: [D00, D20, D40]
 
 particion:
   semilla: 42

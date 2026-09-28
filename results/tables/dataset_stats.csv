@@ -1,19 +1,16 @@
 split,clase,imagenes,instancias,pct_instancias_de_la_clase
-train,D00,776,1101,70.8
-train,D10,42,44,64.7
-train,D20,1220,1413,69.9
-train,D40,1082,2272,71.3
-train,fondo (sin daños),3138,0,
-train,TOTAL,5394,4830,
-val,D00,165,227,14.6
-val,D10,9,10,14.7
-val,D20,273,305,15.1
-val,D40,229,488,15.3
-val,fondo (sin daños),672,0,
-val,TOTAL,1155,1030,
-test,D00,168,227,14.6
-test,D10,9,14,20.6
-test,D20,265,303,15.0
-test,D40,219,427,13.4
-test,fondo (sin daños),673,0,
-test,TOTAL,1157,971,
+train,D00,776,1095,70.4
+train,D20,1237,1423,70.4
+train,D40,1074,2238,70.2
+train,fondo (sin daños),3149,0,
+train,TOTAL,5394,4756,
+val,D00,166,233,15.0
+val,D20,258,297,14.7
+val,D40,230,496,15.6
+val,fondo (sin daños),675,0,
+val,TOTAL,1156,1026,
+test,D00,167,227,14.6
+test,D20,263,301,14.9
+test,D40,226,453,14.2
+test,fondo (sin daños),674,0,
+test,TOTAL,1156,981,

@@ -28,4 +28,10 @@
 - Test: D00 227 · D10 14 (9 imágenes) · D20 303 · D40 427 instancias.
 - Calibración INT8: 500 imágenes de train (semilla 42), `configs/calib.yaml`; verificado que 0 están fuera de train.
 - Datos YOLO en el disco de Linux: `~/datasets/rdd2022_india_yolo` (lectura ~4 GB/s).
-- **Alerta:** D10 tiene solo 68 instancias; su AP en test (14 instancias) será muy ruidoso. Pendiente decidir cómo reportarlo.
+- **Alerta:** D10 tiene solo 68 instancias; su AP en test (14 instancias) sería muy ruidoso.
+- **Decisión (2026-09-27): se excluye D10 del estudio** → clases D00, D20, D40. Datos regenerados:
+  - Conservadas: D00 1 555 · D20 2 021 · D40 3 187. Eliminadas 1 440 (incluye D10 68).
+  - Fondo: 3 921 originales + 577 por filtrado (15 imágenes que solo tenían D10 pasan a fondo).
+  - Estratos: D00 > D20 > D40 > fondo. train 5 394 / val 1 156 / test 1 156.
+  - Test: D00 227 · D20 301 · D40 453 instancias. Calibración: 500 imágenes de train (492 instancias).
+- **Resultado: Fase 1 completada.**

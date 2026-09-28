@@ -41,7 +41,7 @@ detectores YOLO ligeros, en el subconjunto India de RDD2022.
 | Elemento | Decisión |
 |---|---|
 | Dataset | `data/raw/RDD2022/India` (RDD2022, github.com/sekilab/RoadDamageDetector), solo carpeta `train` (el `test` oficial no tiene etiquetas) |
-| Clases | D00, D10, D20, D40. Eliminar cualquier otra etiqueta y registrar cuántas se eliminaron |
+| Clases | D00, D20, D40. Eliminar cualquier otra etiqueta y registrar cuántas se eliminaron. D10 excluida (2026-09-27): solo 68 instancias en India (14 en test), AP inestable; se menciona en Métodos/Limitaciones |
 | Partición | 70 % train / 15 % val / 15 % test, semilla 42, listas de archivos guardadas en `data/splits/` |
 | Maestro | YOLO11m, preentrenado en COCO, 1 entrenamiento |
 | Alumnos | YOLO11n base y YOLO11n + KD, preentrenados en COCO, 3 semillas cada uno (0, 1, 2) |
@@ -137,7 +137,7 @@ proyecto/
 
 - [x] Revisión sistemática y borrador del paper (v1)
 - [x] Fase 0 — Entorno (2026-09-27, `results/env_check.json`)
-- [ ] Fase 1 — Datos
+- [x] Fase 1 — Datos (2026-09-27, clases D00/D20/D40)
 - [ ] Fase 2 — Maestro
 - [ ] Fase 3 — Alumno base
 - [ ] Fase 4 — Alumno KD
