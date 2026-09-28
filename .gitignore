@@ -1,0 +1,26 @@
+# Datos (pesados, se regeneran con src/data/)
+data/raw/
+data/yolo/
+# Las listas de partición SÍ se versionan (reproducibilidad)
+!data/splits/
+
+# Corridas, pesos y exportaciones
+runs/
+*.pt
+*.engine
+*.onnx
+*.cache
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.ipynb_checkpoints/
+
+# Office temporales
+~$*
+
+# SO / editor
+.DS_Store
+Thumbs.db
+.vscode/

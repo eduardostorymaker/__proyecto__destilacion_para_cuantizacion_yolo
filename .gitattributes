@@ -1,0 +1,6 @@
+# Finales de línea LF para scripts que se ejecutan en WSL
+* text=auto eol=lf
+*.docx binary
+*.xlsx binary
+*.png binary
+*.jpg binary

@@ -1,0 +1,31 @@
+# Dependencias directas con versión fija (Python 3.13, Linux x86_64 / WSL2, CUDA 13.0).
+# El lock completo (incluye dependencias transitivas) se genera en requirements.lock.txt
+# con scripts/setup_wsl.sh tras la instalación.
+#
+# torch/torchvision se instalan desde el índice de PyTorch para CUDA 13.0:
+#   --extra-index-url https://download.pytorch.org/whl/cu130
+--extra-index-url https://download.pytorch.org/whl/cu130
+
+# Núcleo de entrenamiento
+torch==2.14.0+cu130
+torchvision==0.29.0+cu130
+ultralytics==8.4.164
+
+# Exportación y cuantización
+# TensorRT 10.x (no 11): la rama 10 conserva la PTQ INT8 clásica con IInt8EntropyCalibrator2
+# sobre todas las capas; TensorRT 11 obliga a Q/DQ explícito vía ModelOpt y deja capas en float.
+tensorrt-cu13==10.16.1.11
+openvino==2026.4.0
+nncf==3.4.0
+onnx==1.23.0
+onnxslim==0.1.96
+
+# Datos, estadística y reporte
+numpy==2.5.3
+scipy==1.18.1
+pandas==3.0.6
+matplotlib==3.11.2
+pycocotools==2.0.11
+pyyaml==6.0.3
+lxml==6.1.3
+tqdm==4.70.1
