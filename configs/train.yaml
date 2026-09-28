@@ -1,0 +1,49 @@
+# Hiperparámetros de entrenamiento (Fases 2-4).
+# `comun` se aplica al maestro y a los alumnos. Entre alumno base y alumno KD la ÚNICA
+# diferencia debe ser la pérdida CWD (configs/kd.yaml).
+
+comun:
+  data: configs/data.yaml
+  imgsz: 640
+  epochs: 150
+  patience: 0            # 0 = sin parada temprana: todos corren exactamente `epochs`
+  batch: 16
+  optimizer: SGD         # fijo (no 'auto', que elige según nº de iteraciones)
+  lr0: 0.01
+  lrf: 0.01
+  momentum: 0.937
+  weight_decay: 0.0005
+  warmup_epochs: 3.0
+  cos_lr: true
+  close_mosaic: 10       # aumentación: valores por defecto de ultralytics
+  amp: true
+  deterministic: true
+  workers: 8
+  cache: false           # los datos ya están en el disco de Linux (~4 GB/s)
+  pretrained: true
+  save_period: -1
+  plots: true
+  val: true              # validación por época en el split val (nunca test)
+
+maestro:
+  modelo: runs/pretrained/yolo11m.pt   # COCO; se descarga aquí si no existe
+  seed: 0
+  project: runs/teacher
+  name: teacher_s0
+  # Sobrescribe `comun` solo para el maestro.
+  # batch 16 satura la RTX 4060 (7.8/8 GB, 2x más lento); batch 8 usa 4.1 GB.
+  # ultralytics acumula gradientes hasta nbs=64, así que el paso efectivo es equivalente.
+  sobrescribe:
+    batch: 8
+
+alumno:
+  modelo: runs/pretrained/yolo11n.pt
+  semillas: [0, 1, 2]
+  project: runs/students
+  # name = student_{kd|base}_s{seed}
+
+# Prueba de humo: verifica que el script corre y que el batch cabe en la GPU
+humo:
+  epochs: 1
+  fraction: 0.05
+  project: runs/smoke

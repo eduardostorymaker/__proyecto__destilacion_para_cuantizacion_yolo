@@ -35,3 +35,13 @@
   - Estratos: D00 > D20 > D40 > fondo. train 5 394 / val 1 156 / test 1 156.
   - Test: D00 227 · D20 301 · D40 453 instancias. Calibración: 500 imágenes de train (492 instancias).
 - **Resultado: Fase 1 completada.**
+
+## 2026-09-27 — Fase 2: maestro (preparación)
+
+- `configs/train.yaml`: imgsz 640, 150 épocas, patience 0 (sin parada temprana), SGD lr0 0.01,
+  momentum 0.937, wd 5e-4, cos_lr, close_mosaic 10, aumentación por defecto, deterministic, seed 0.
+- Prueba de velocidad YOLO11m (RTX 4060, 10 % de train, 1 época):
+  batch 16 → 7.8 GB (satura), 0.047–0.10 s/img · batch 8 → 4.1 GB, 0.023 s/img.
+  Decisión: maestro con batch 8 (nbs=64 → acumulación de gradiente equivalente). Alumnos se mantienen en 16.
+- Prueba de humo (`--humo`, 1 época, 5 % de train) OK; pesos COCO en `runs/pretrained/`.
+- Pendiente: entrenamiento completo (`bash scripts/train_teacher.sh`, ~6 h estimadas).
