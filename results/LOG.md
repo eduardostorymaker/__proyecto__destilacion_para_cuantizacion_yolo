@@ -15,3 +15,17 @@
   TensorRT 10.16.1.11 (FP16 e INT8 disponibles), OpenVINO 2026.4.0 (CPU i7-12700KF),
   NNCF 3.4.0, ultralytics 8.4.164, onnx 1.23.0. RAM visible en WSL: 23.5 GB.
 - **Resultado: Fase 0 completada.**
+
+## 2026-09-27 — Fase 1: preparación de datos
+
+- `python -m src.data.prepare_dataset` y `python -m src.data.dataset_stats` (config `configs/data_prep.yaml`).
+- 7 706 imágenes (720×720). Instancias conservadas: D00 1 555 · D10 68 · D20 2 021 · D40 3 187.
+- Eliminadas 1 372 instancias (`results/tables/removed_labels.csv`): D44 1 062, D01 179, D43 57,
+  D11 45, D50 28, D0w0 1 (probable errata de D00; se eliminó según la regla).
+- Fondo: 3 921 imágenes sin anotaciones + 562 que quedaron sin cajas tras el filtrado (58 % del total).
+- Partición estratificada por clase más rara presente (D10 > D00 > D20 > D40 > fondo), semilla 42:
+  train 5 394 / val 1 155 / test 1 157. Listas en `data/splits/`.
+- Test: D00 227 · D10 14 (9 imágenes) · D20 303 · D40 427 instancias.
+- Calibración INT8: 500 imágenes de train (semilla 42), `configs/calib.yaml`; verificado que 0 están fuera de train.
+- Datos YOLO en el disco de Linux: `~/datasets/rdd2022_india_yolo` (lectura ~4 GB/s).
+- **Alerta:** D10 tiene solo 68 instancias; su AP en test (14 instancias) será muy ruidoso. Pendiente decidir cómo reportarlo.

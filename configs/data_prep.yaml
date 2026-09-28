@@ -1,0 +1,29 @@
+# Configuración de la preparación de datos (Fase 1).
+# Rutas relativas a la raíz del proyecto, salvo yolo_dir (disco de Linux, E/S rápida en WSL).
+
+raw_dir: data/raw/RDD2022/India/train      # contiene annotations/xmls/ e images/
+yolo_dir: ~/datasets/rdd2022_india_yolo    # salida en formato YOLO (se regenera completa)
+splits_dir: data/splits                    # listas de archivos por split (versionadas en git)
+
+# Clases del estudio; el índice YOLO es el orden de esta lista.
+# Cualquier otra etiqueta (D01, D11, D43, D44, D50, ...) se elimina y se registra.
+clases: [D00, D10, D20, D40]
+
+particion:
+  semilla: 42
+  proporciones: {train: 0.70, val: 0.15, test: 0.15}
+  # Estratificación: cada imagen se asigna al estrato de la clase MÁS RARA que contiene
+  # (rareza = nº de instancias en todo el dataset); imágenes sin clases del estudio -> estrato "fondo".
+  # Dentro de cada estrato se baraja con la semilla y se corta 70/15/15.
+  estratificar: true
+
+calibracion:
+  n_imagenes: 500     # tomadas SOLO del split train
+  semilla: 42
+
+salidas:
+  data_yaml: configs/data.yaml
+  calib_yaml: configs/calib.yaml
+  etiquetas_eliminadas_csv: results/tables/removed_labels.csv
+  resumen_json: results/data_prep_info.json
+  stats_csv: results/tables/dataset_stats.csv

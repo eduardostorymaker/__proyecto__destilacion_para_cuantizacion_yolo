@@ -1,0 +1,10 @@
+# Generado por src/data/prepare_dataset.py — no editar a mano.
+# Calibración INT8: 500 imágenes del split TRAIN (nunca val ni test).
+path: /home/storyman/datasets/rdd2022_india_yolo
+train: calib.txt
+val: calib.txt
+names:
+  0: D00
+  1: D10
+  2: D20
+  3: D40
