@@ -1,30 +1,32 @@
-# Configuración de la preparación de datos (Fase 1).
+# Configuración de la preparación de datos (Fase 1, diseño D1 del CLAUDE.md).
 # Rutas relativas a la raíz del proyecto, salvo yolo_dir (disco de Linux, E/S rápida en WSL).
 
 raw_dir: data/raw/RDD2022/India/train      # contiene annotations/xmls/ e images/
 yolo_dir: ~/datasets/rdd2022_india_yolo    # salida en formato YOLO (se regenera completa)
 splits_dir: data/splits                    # listas de archivos por split (versionadas en git)
 
-# Clases del estudio; el índice YOLO es el orden de esta lista.
-# Cualquier otra etiqueta (D01, D10, D11, D43, D44, D50, ...) se elimina y se registra.
-# D10 excluida (decisión 2026-09-27): solo 68 instancias en todo India, 14 en test -> AP inestable.
-clases: [D00, D20, D40]
+# Clases del estudio; el índice YOLO es el orden de esta lista (D00=0, D10=1, D20=2, D40=3).
+# Cualquier otra etiqueta del XML se elimina (solo la caja; la imagen se conserva).
+clases: [D00, D10, D20, D40]
+
+limpieza:
+  min_lado_px: 1.0   # regla 3: cajas con ancho o alto < 1 px tras recortar se eliminan
 
 particion:
   semilla: 42
   proporciones: {train: 0.70, val: 0.15, test: 0.15}
-  # Estratificación: cada imagen se asigna al estrato de la clase MÁS RARA que contiene
-  # (rareza = nº de instancias en todo el dataset); imágenes sin clases del estudio -> estrato "fondo".
-  # Dentro de cada estrato se baraja con la semilla y se corta 70/15/15.
-  estratificar: true
+  # Estratificación iterativa multietiqueta (Sechidis et al., 2011; iterative-stratification)
+  # sobre la presencia por imagen de las 4 clases + "fondo".
 
 calibracion:
-  n_imagenes: 500     # tomadas SOLO del split train
+  n_imagenes: 500    # SOLO del split train, estratificadas por clase (misma técnica)
   semilla: 42
+
+aviso_min_instancias_test: {D10: 10}   # avisar si alguna clase queda por debajo en test
 
 salidas:
   data_yaml: configs/data.yaml
   calib_yaml: configs/calib.yaml
-  etiquetas_eliminadas_csv: results/tables/removed_labels.csv
+  auditoria_csv: results/tables/data_audit.csv
   resumen_json: results/data_prep_info.json
   stats_csv: results/tables/dataset_stats.csv

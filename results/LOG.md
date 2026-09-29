@@ -45,3 +45,36 @@
   Decisión: maestro con batch 8 (nbs=64 → acumulación de gradiente equivalente). Alumnos se mantienen en 16.
 - Prueba de humo (`--humo`, 1 época, 5 % de train) OK; pesos COCO en `runs/pretrained/`.
 - Pendiente: entrenamiento completo (`bash scripts/train_teacher.sh`, ~6 h estimadas).
+
+## 2026-09-28 — Cambio de diseño (paper v3) y Fase 1 rehecha
+
+- CLAUDE.md actualizado al diseño v3 (P1 ΔmAP, P2 ECE, P3 KD+PTQ vs base+QAT; D1–D8).
+- Se revierte la exclusión de D10 → 4 clases: D00=0, D10=1, D20=2, D40=3.
+- Reglas de limpieza D1 aplicadas en orden (`python -m src.data.prepare_dataset`):
+
+| Etiqueta original | Cajas | R1 otra clase | R2 recortadas | R3 <1 px | R4 duplicadas | R5 img corrupta | Conservadas |
+|---|---|---|---|---|---|---|---|
+| D40 | 3 187 | 0 | 0 | 0 | 0 | 0 | 3 187 |
+| D20 | 2 021 | 0 | 0 | 0 | 0 | 0 | 2 021 |
+| D00 | 1 555 | 0 | 0 | 0 | 0 | 0 | 1 555 |
+| D44 | 1 062 | 1 062 | – | – | – | – | 0 |
+| D01 | 179 | 179 | – | – | – | – | 0 |
+| D10 | 68 | 0 | 0 | 0 | 0 | 0 | 68 |
+| D43 | 57 | 57 | – | – | – | – | 0 |
+| D11 | 45 | 45 | – | – | – | – | 0 |
+| D50 | 28 | 28 | – | – | – | – | 0 |
+| D0w0 | 1 | 1 | – | – | – | – | 0 |
+| **Total** | **8 203** | **1 372** | **0** | **0** | **0** | **0** | **6 831** |
+
+- a) Imágenes: raw 7 706 = data/yolo 7 706 (0 corruptas; 0 con tamaño XML ≠ tamaño real).
+- c) Fondo: 4 483 imágenes (58.18 %) = 3 921 sin objetos en el XML + 562 cuyas únicas cajas eran de otras clases.
+- d) "Filas" eliminadas en la versión anterior: eran **cajas** (líneas de etiqueta), no imágenes.
+  v1 (4 clases, 2026-09-27): 1 372 cajas de clases fuera del estudio (D44, D01, D43, D11, D50, D0w0),
+  las mismas que hoy elimina la regla 1. v2 (3 clases): 1 440 = esas 1 372 + las 68 de D10.
+  Ninguna imagen se eliminó en ninguna versión; las imágenes que quedaron sin cajas pasaron a fondo
+  (562 en v1, 577 en v2).
+- Partición: estratificación iterativa multietiqueta (iterative-stratification 0.1.9; 4 clases + fondo),
+  semilla 42 → train 5 396 / val 1 144 / test 1 166 imágenes.
+- Test: D00 227 · D10 **9** (9 imágenes) · D20 300 · D40 464 instancias. **Aviso: D10 < 10 en test.**
+- Calibración: 500 imágenes de train estratificadas (iterstrat devolvió 503; se quitaron 3 de fondo
+  al azar con semilla 42). Imágenes con D00 72 · D10 4 · D20 114 · D40 99. Verificado: 0 fuera de train.

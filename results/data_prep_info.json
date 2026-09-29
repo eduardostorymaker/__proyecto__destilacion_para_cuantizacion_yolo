@@ -1,44 +1,69 @@
 {
-  "xml_leidos": 7706,
   "clases": [
     "D00",
+    "D10",
     "D20",
     "D40"
   ],
-  "orden_rareza_estratos": [
-    "D00",
-    "D20",
-    "D40"
-  ],
-  "instancias_conservadas": {
-    "D40": 3187,
-    "D00": 1555,
-    "D20": 2021
+  "auditoria_cajas": {
+    "original": {
+      "D40": 3187,
+      "D44": 1062,
+      "D00": 1555,
+      "D20": 2021,
+      "D01": 179,
+      "D11": 45,
+      "D10": 68,
+      "D50": 28,
+      "D43": 57,
+      "D0w0": 1
+    },
+    "r1_otra_clase": {
+      "D44": 1062,
+      "D01": 179,
+      "D11": 45,
+      "D50": 28,
+      "D43": 57,
+      "D0w0": 1
+    },
+    "r2_recortada": {},
+    "r3_menor_1px": {},
+    "r4_duplicada": {},
+    "r5_imagen_corrupta": {},
+    "conservada": {
+      "D40": 3187,
+      "D00": 1555,
+      "D20": 2021,
+      "D10": 68
+    }
   },
-  "instancias_eliminadas": {
-    "D44": 1062,
-    "D01": 179,
-    "D11": 45,
-    "D10": 68,
-    "D50": 28,
-    "D43": 57,
-    "D0w0": 1
+  "auditoria_imagenes": {
+    "imagenes_raw": 7706,
+    "xml_raw": 7706,
+    "imagenes_corruptas_eliminadas_r5": 0,
+    "imagenes_en_data_yolo": 7706,
+    "imagenes_fondo_r6": 4483,
+    "pct_fondo": 58.18,
+    "imagenes_fondo_sin_anotaciones_en_xml": 3921,
+    "imagenes_con_tamano_xml_distinto": 0,
+    "imagenes_train": 5396,
+    "imagenes_val": 1144,
+    "imagenes_test": 1166,
+    "imagenes_calibracion": 500,
+    "calibracion_ajuste_fondo": -3,
+    "calibracion_imagenes_con_D00": 72,
+    "calibracion_imagenes_con_D10": 4,
+    "calibracion_imagenes_con_D20": 114,
+    "calibracion_imagenes_con_D40": 99
   },
-  "imagenes_fondo_original": 3921,
-  "imagenes_fondo_por_filtrado": 577,
-  "imagenes_por_split": {
-    "train": 5394,
-    "val": 1156,
-    "test": 1156
-  },
-  "imagenes_calibracion": 500,
+  "imagenes_corruptas": [],
   "yolo_dir": "/home/storyman/datasets/rdd2022_india_yolo",
   "entorno": {
-    "fecha": "2026-09-27T22:25:39",
+    "fecha": "2026-09-28T22:06:53",
     "python": "3.13.15",
     "plataforma": "Linux-6.6.114.1-microsoft-standard-WSL2-x86_64-with-glibc2.43",
     "cpu": "x86_64",
-    "git_commit": "b5c294ced86cb9a92b87581b04aa37e3430357f4-dirty",
+    "git_commit": "f7a0af0f5aee2ec42b4e99da9696d44c3d3a7dfa-dirty",
     "paquetes": {
       "ultralytics": "8.4.164",
       "torch": "2.14.0+cu130",

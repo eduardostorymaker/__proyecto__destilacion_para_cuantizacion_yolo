@@ -2,28 +2,22 @@
 
 ## Contexto de investigación (leer antes de cualquier tarea)
 
-Estoy escribiendo un paper (formato IEEE, máx. 8 páginas) con esta pregunta:
+Paper IEEE (máx. 8 págs.). El paper (v3) ya está escrito con este diseño: todo debe coincidir.
+Tres preguntas:
 
-> ¿La destilación de conocimiento (KD) reduce la pérdida de precisión que produce la
-> cuantización INT8 en detectores YOLO ligeros para la detección de baches y daños viales?
+- **P1.** ¿La destilación de conocimiento (KD) reduce la pérdida de mAP por cuantización INT8 en
+  un YOLO11n para daños viales?
+- **P2.** ¿El alumno KD conserva mejor calibración (ECE) tras cuantizar?
+- **P3.** ¿Un alumno KD con PTQ alcanza el desempeño de un alumno base con QAT?
 
-**Hipótesis:** un YOLO11n entrenado con KD pierde menos mAP al cuantizarse a INT8 que el
-mismo YOLO11n entrenado sin KD.
+**Brecha:** en detección de daños viales basada en imágenes, nadie compara un detector destilado
+vs. no destilado tras cuantizar, ni evalúa QAT. Antecedente más cercano fuera del dominio:
+Karjol y Hanna (2026, arXiv:2604.26857, preprint no revisado): en BDD100K, KD NO redujo la
+pérdida de mAP (0.030 vs 0.031) pero sí conservó mayor precisión en INT8; una sola corrida y
+solo PTQ.
 
-**Brecha (confirmada con revisión PRISMA):** en daños viales, la KD y la cuantización se han
-estudiado por separado. SBP-YOLO (Liang et al., 2026) usa ambas pero evalúa la KD solo en FP32.
-SHE-YOLO (Li et al., 2026) reporta que su modelo mejorado pierde al cuantizarse lo mismo que el
-modelo base. Karjol y Hanna (2026, arXiv:2604.26857) muestran en peatones que los alumnos
-destilados degradan menos bajo INT8 (−5.6 % vs −23 % mAP) por mejor calibración.
-
-**Objetivo general:** evaluar el efecto de la KD en la pérdida de precisión por cuantización de
-detectores YOLO ligeros, en el subconjunto India de RDD2022.
-
-**Objetivos específicos (el código cubre del 2 al 4):**
-1. Revisión sistemática PRISMA 2020 (ya hecha).
-2. Entrenar YOLO11n con y sin KD (maestro YOLO11m) y comparar en FP32.
-3. Cuantizar ambos a FP16 e INT8 y medir ΔmAP global y por clase (énfasis en D40, bache).
-4. Medir eficiencia (tamaño, latencia, FPS) en RTX 4060 (TensorRT) y CPU i7-12700KF (OpenVINO).
+Nota: la búsqueda en Scopus se usó solo para identificar la brecha; PRISMA ya no forma parte de
+la metodología.
 
 ## Hardware y entorno
 
@@ -38,73 +32,151 @@ detectores YOLO ligeros, en el subconjunto India de RDD2022.
 
 ## Diseño experimental (NO cambiar sin preguntarme)
 
-| Elemento | Decisión |
-|---|---|
-| Dataset | `data/raw/RDD2022/India` (RDD2022, github.com/sekilab/RoadDamageDetector), solo carpeta `train` (el `test` oficial no tiene etiquetas) |
-| Clases | D00, D20, D40. Eliminar cualquier otra etiqueta y registrar cuántas se eliminaron. D10 excluida (2026-09-27): solo 68 instancias en India (14 en test), AP inestable; se menciona en Métodos/Limitaciones |
-| Partición | 70 % train / 15 % val / 15 % test, semilla 42, listas de archivos guardadas en `data/splits/` |
-| Maestro | YOLO11m, preentrenado en COCO, 1 entrenamiento |
-| Alumnos | YOLO11n base y YOLO11n + KD, preentrenados en COCO, 3 semillas cada uno (0, 1, 2) |
-| KD | CWD (Shu et al., ICCV 2021) en las salidas del neck P3, P4, P5; pérdida = L_det + λ·L_CWD |
-| Hiperparámetros | Idénticos para ambos alumnos (imgsz 640, mismas épocas, batch, optimizador, aumentación). La ÚNICA diferencia es la pérdida CWD |
-| Cuantización | PTQ. GPU: TensorRT FP32/FP16/INT8. CPU: OpenVINO FP32/INT8 |
-| Calibración INT8 | 500 imágenes del split **train** (mismas para ambos alumnos). **Nunca** usar val ni test |
-| Evaluación | Siempre sobre el mismo split test |
-| Métricas | mAP@0.5, mAP@0.5:0.95, AP por clase (D40), recall; ΔmAP = mAP_FP32 − mAP_INT8 |
-| Estadística | media ± d.e. de 3 semillas; IC 95 % por bootstrap (1 000 remuestreos de imágenes de test) para la diferencia de ΔmAP entre alumnos |
-| Eficiencia | tamaño (MB), latencia batch 1 (50 iteraciones de calentamiento + 500 medidas), FPS |
+### D1. Datos
+- Fuente: `data/raw/RDD2022/India/train` (el test oficial no tiene etiquetas). No descargar nada.
+- Clases: D00=0, D10=1, D20=2, D40=3. (Se revirtió la exclusión de D10: si se borran sus
+  etiquetas pero se conservan las imágenes, las grietas transversales se vuelven "fondo"
+  (etiquetas faltantes), lo que puede dañar el aprendizaje de D00. Sus pocas instancias se
+  tratan en el análisis (sensibilidad sin D10), no en los datos.)
+- Reglas de limpieza (aplicar en este orden y registrar cada conteo):
+  1. Etiquetas de otras clases: se eliminan SOLO esas cajas; la imagen se conserva.
+  2. Cajas fuera de la imagen: recortar a los bordes.
+  3. Cajas con ancho o alto < 1 px tras recortar: eliminar.
+  4. Cajas duplicadas idénticas (misma clase y coordenadas): dejar una.
+  5. Imágenes corruptas o ilegibles: eliminar la imagen.
+  6. Imágenes sin cajas tras la limpieza: se CONSERVAN como fondo (.txt vacío). No submuestrear el fondo.
+  NUNCA eliminar una imagen por otro motivo que no sea el punto 5.
+- Auditoría obligatoria antes de seguir → `results/tables/data_audit.csv` y resumen en LOG.md:
+  a) imágenes totales en raw y en data/yolo (iguales salvo corruptas);
+  b) cajas por etiqueta ORIGINAL (todas las del XML, incluidas las no estándar) y cuántas se
+     eliminaron por cada regla;
+  c) número y porcentaje de imágenes de fondo;
+  d) explicación de qué fueron las "filas" eliminadas en la versión anterior de la Fase 1 y por qué.
+- Partición: 70/15/15 con estratificación iterativa multietiqueta (Sechidis et al., 2011; paquete
+  `iterative-stratification`) sobre la presencia por imagen de las 4 clases + etiqueta "fondo".
+  Semilla 42. Listas en `data/splits/`.
+- data/yolo en el sistema de archivos de Linux (WSL), no en /mnt, por velocidad de lectura
+  (actualmente `~/datasets/rdd2022_india_yolo`, configurable en `configs/data_prep.yaml`).
+- Estadísticas: `results/tables/dataset_stats.csv` (imágenes e instancias por clase y split).
+  Si D10 queda con < 10 instancias en test, avisar.
 
-## Pipeline técnico (fases)
+### D2. Entrenamiento (común a maestro y alumnos)
+- Pesos iniciales COCO: yolo11m.pt (maestro), yolo11n.pt (alumnos).
+- imgsz=640, batch=8, nbs=64, epochs=300.
+- optimizer='SGD' (explícito, NO 'auto'), lr0=0.01, lrf=0.01, momentum=0.937,
+  weight_decay=0.0005, warmup_epochs=3, cos_lr=False.
+- Aumentación por defecto de Ultralytics: mosaic=1.0, close_mosaic=10, hsv_h=0.015, hsv_s=0.7,
+  hsv_v=0.4, translate=0.1, scale=0.5, fliplr=0.5, mixup=0.0. Sin aumentaciones extra.
+- Precisión de entrenamiento: amp=True (precisión mixta) para TODOS los modelos, salvo que la
+  Fase 1b muestre inestabilidad. AMP no es cuantización: los pesos maestros quedan en FP32 y
+  best.pt es el punto de partida de toda la cuantización.
+- deterministic=True; semillas fijadas en Python, NumPy y PyTorch.
+- Maestro: patience=50, seed=0, 1 corrida.
+- Alumnos (base y KD): patience=300 (sin parada temprana), seeds 0, 1, 2; se usa best.pt
+  (fitness de Ultralytics sobre validación).
+- workers=8. cache: 'ram' si cabe en los 24 GB de WSL; si no, 'disk'. Mismo valor para todas
+  las corridas.
+- Todo en `configs/train.yaml`; guardar args.yaml de cada corrida.
 
-Trabajar **una fase a la vez**. Al terminar cada fase, resumir qué se hizo y esperar mi confirmación.
+### D3. Destilación (solo alumno KD)
+- CWD (Shu et al., ICCV 2021) sobre las 3 entradas de la cabeza Detect (P3, P4, P5).
+- Maestro: best.pt de la Fase 2, congelado, eval(), sin gradientes, con autocast; recibe el
+  MISMO batch aumentado que el alumno.
+- Adaptadores: conv 1×1 en el alumno para igualar canales con el maestro; se entrenan con el
+  alumno y NO se exportan (verificar que no están en best.pt).
+- Pérdida: L = L_det + λ·L_CWD, con τ=1.0.
+- λ: piloto antes de las corridas finales: λ ∈ {0.5, 1.0, 2.0}, seed 0, 50 épocas, mismos
+  hiperparámetros; elegir por mAP@0.5:0.95 de VALIDACIÓN (nunca test). Durante el piloto,
+  registrar por época L_det y L_CWD para ver que L_CWD baja y que su escala es razonable frente
+  a L_det. Documentar en LOG.md.
+- `configs/kd.yaml`. Si se adapta código externo, registrar repositorio y commit.
 
-### Fase 0 — Entorno y estructura
-- Crear estructura de carpetas (ver abajo), `requirements.txt` con versiones fijas y un script
-  `scripts/check_env.py` que verifique CUDA, versión de TensorRT, OpenVINO y ultralytics.
+### D4. Cuantización post-entrenamiento (PTQ)
+- Punto de partida: best.pt en FP32 de cada modelo. FP16 e INT8 se generan POR SEPARADO desde ese
+  modelo (no hay paso FP32 → FP16 → INT8).
+- GPU (RTX 4060, TensorRT 10): FP32 (half=False), FP16 (half=True), INT8 (int8=True,
+  IInt8EntropyCalibrator2).
+- CPU (i7-12700KF, OpenVINO): FP32 e INT8 (NNCF).
+- Exportación: imgsz=640, batch=1, dynamic=False, simplify=True.
+- Calibración INT8: `data/splits/calib.txt` = 500 imágenes de TRAIN, semilla 42, estratificadas
+  por clase. `configs/calib.yaml` con 'train' y 'val' apuntando a calib.txt, para que nunca se
+  calibre con val o test. Mismas imágenes para todos los modelos y para la QAT.
+- Registrar por engine qué capas quedaron en INT8, FP16 o FP32 (TensorRT engine inspector),
+  porque TensorRT puede dejar capas en mayor precisión.
+- Se cuantizan: 6 alumnos (todas las precisiones) y el maestro (TensorRT FP16 e INT8, como
+  referencia).
 
-### Fase 1 — Preparación de datos (`src/data/`)
-- De `data/raw/RDD2022/India/train`, convertir XML (Pascal VOC) a formato YOLO txt.
-- Filtrar clases, mantener imágenes sin daños como fondo (etiqueta vacía).
-- Partición 70/15/15 con semilla 42; guardar listas en `data/splits/`.
-- Generar `configs/data.yaml` y `configs/calib.yaml` (500 imágenes de train).
-- Script de estadísticas: imágenes e instancias por clase y por split → `results/tables/dataset_stats.csv`.
+### D5. QAT (solo GPU, TensorRT INT8)
+- Herramienta: NVIDIA TensorRT Model Optimizer (modelopt), cuantización explícita Q/DQ INT8.
+- Para cada alumno (base y KD, seeds 0-2 = 6 ajustes), desde best.pt:
+  1. Insertar cuantizadores y calibrar con calib.yaml.
+  2. Evaluar ese modelo SIN ajuste fino ("ModelOpt PTQ") como control: así la ganancia de la QAT
+     se mide contra el mismo esquema de cuantización.
+  3. Ajuste fino: SOLO pérdida de detección (sin CWD) en ambos alumnos. Propuesta inicial:
+     30 épocas (10 % del entrenamiento), lr0=0.001, lrf=0.01, warmup_epochs=0, mosaic=0 (como
+     las últimas épocas del entrenamiento), resto igual a D2. Proponer cambios si la prueba de
+     humo lo sugiere.
+  4. Exportar ONNX con Q/DQ → TensorRT INT8.
+- `configs/qat.yaml`. Prueba de humo con 1 alumno y 1 época antes de las 6 corridas.
+- Si la integración se bloquea seriamente, avisar: la QAT es opcional y el paper puede seguir
+  solo con PTQ.
 
-### Fase 2 — Maestro (`src/train/train_teacher.py`)
-- Entrenar YOLO11m. Guardar pesos en `runs/teacher/`.
+### D6. Evaluación
+- Siempre split test, imgsz=640, batch=1, conf=0.001, iou=0.7, save_json=True.
+- Métricas: mAP@0.5, mAP@0.5:0.95, AP por clase, precisión y recall (punto de máximo F1 de
+  Ultralytics).
+- ΔmAP = mAP_FP32 − mAP_cuantizado, para PTQ FP16, PTQ INT8 y QAT INT8, global y en D40, con
+  mAP@0.5 y mAP@0.5:0.95.
+- ECE (métrica principal): detecciones con conf ≥ 0.25, emparejadas con cajas reales por
+  IoU ≥ 0.5 (emparejamiento greedy por confianza); correcta si coincide la clase; 15 intervalos
+  de igual ancho.
+- Sensibilidad: mAP recalculada sin D10 (3 clases).
+- `results/metrics.csv`: una fila por modelo/semilla/formato/precisión.
 
-### Fase 3 — Alumno base (`src/train/train_student.py --kd off --seed N`)
-- YOLO11n, 3 semillas.
+### D7. Estadística
+- Media ± d.e. de las 3 semillas.
+- Bootstrap pareado: 1000 remuestreos con reemplazo de imágenes de test, semilla 42, MISMOS
+  índices para todos los modelos en cada réplica. IC 95 % por percentiles para:
+  (a) ΔmAP_base − ΔmAP_kd con PTQ INT8,
+  (b) ΔmAP_base − ΔmAP_kd con QAT INT8,
+  (c) ECE_base − ECE_kd en INT8 (PTQ y QAT),
+  (d) mAP(KD + PTQ INT8) − mAP(base + QAT INT8).
+  En cada réplica se calcula cada diferencia para los pares de la misma semilla y se promedia
+  sobre las 3 semillas.
+- `results/tables/bootstrap.csv`. Usar una implementación rápida de COCO eval.
 
-### Fase 4 — Alumno con KD (`src/train/train_student.py --kd on --seed N`)
-- Implementar CWD como un `DetectionTrainer` personalizado de ultralytics (o adaptar una
-  implementación abierta, documentando la fuente y el commit).
-- Registrar hooks en el neck del maestro (congelado, `eval()`) y del alumno (P3–P5).
-- Si los canales no coinciden (n vs m), usar convoluciones 1×1 de adaptación en el alumno;
-  se entrenan junto con él y se descartan al exportar.
-- τ y λ en `configs/kd.yaml`.
-- **Antes de entrenar en serio:** prueba de humo de 2 épocas con `fraction` pequeño que confirme
-  que L_CWD baja y que el modelo exportado no contiene los adaptadores.
+### D8. Eficiencia
+- Batch 1, imgsz 640, 50 calentamientos + 500 medidas; mediana y media.
+- Separar preproceso, inferencia y postproceso (NMS); latencia principal = inferencia.
+  FPS = 1000 / latencia media de inferencia.
+- Tamaño en MB del archivo exportado. Registrar driver NVIDIA y CUDA.
+- `results/tables/efficiency.csv`.
 
-### Fase 5 — Exportación y cuantización (`src/quant/export_all.py`)
-- Para cada alumno y semilla: TensorRT (FP32, FP16, INT8 con `calib.yaml`) y OpenVINO (FP32, INT8).
-- Verificar que la calibración INT8 usa `calib.yaml` y no el split val.
-- Guardar en `runs/exports/{modelo}_{seed}_{formato}_{precision}/`.
+## Pipeline (orden de ejecución)
 
-### Fase 6 — Evaluación (`src/eval/evaluate.py`)
-- Evaluar cada modelo exportado en el split test: métricas globales, por clase y recall.
-- Guardar las predicciones por imagen (JSON) para el bootstrap.
-- Resultados en `results/metrics.csv` (una fila por modelo/semilla/formato/precisión).
+Una fase a la vez; al terminar, resumen y esperar mi confirmación.
+Los entrenamientos largos los lanzo yo: preparar scripts .sh.
 
-### Fase 7 — Estadística (`src/eval/bootstrap.py`)
-- Bootstrap de imágenes de test (1 000 remuestreos, semilla fija) para ΔmAP de cada alumno y
-  su diferencia. Salida: `results/tables/bootstrap.csv`.
-
-### Fase 8 — Eficiencia (`src/bench/benchmark.py`)
-- Latencia y FPS con batch 1 en GPU y CPU; tamaño en MB. Salida: `results/tables/efficiency.csv`.
-
-### Fase 9 — Tablas y figuras para el paper (`src/report/`)
-- Generar las Tablas III, IV y V del paper (media ± d.e.) en CSV y Markdown.
-- Figura: mAP vs. precisión numérica (FP32/FP16/INT8) para ambos alumnos.
+- **Fase 1** (REHACER) Datos con 4 clases + reglas D1 + auditoría completa.
+- **Fase 1b** Pruebas de tiempo, antes de cualquier entrenamiento largo:
+  - Maestro YOLO11m, 3 épocas con amp=True y 3 con amp=False.
+  - Alumno YOLO11n, 3 épocas con amp=True.
+  - Reportar: tiempo por época (sin contar la primera), VRAM máxima, pérdidas (detectar NaN) y
+    estimación total del proyecto: maestro 300 ép., 3 alumnos base × 300, 3 alumnos KD × 300
+    (estimar el costo extra del maestro en KD), piloto λ 3 × 50, QAT 6 × 30.
+  - Recomendar AMP o FP32 y esperar decisión.
+- **Fase 2** Maestro (lo lanzo yo). Mientras entrena, avanzar Fase 4a y Fase 6.
+- **Fase 4a** Implementar CWD + prueba de humo (2 épocas, fraction pequeño; puede usarse
+  yolo11m.pt de COCO como maestro temporal solo para la prueba).
+- **Fase 3** Alumnos base, seeds 0-2.
+- **Fase 4b** Piloto de λ (con el maestro final) y luego alumnos KD, seeds 0-2.
+- **Fase 5** PTQ (D4).
+- **Fase 5b** QAT (D5).
+- **Fase 6** Evaluación (D6).
+- **Fase 7** Estadística (D7).
+- **Fase 8** Eficiencia (D8).
+- **Fase 9** Tablas III, IV y V del paper (media ± d.e.) en CSV y Markdown, y figura de mAP vs.
+  método de cuantización para ambos alumnos.
 
 ## Estructura del proyecto
 
@@ -112,12 +184,12 @@ Trabajar **una fase a la vez**. Al terminar cada fase, resumir qué se hizo y es
 proyecto/
 ├── CLAUDE.md
 ├── requirements.txt
-├── configs/        data.yaml, calib.yaml, train.yaml, kd.yaml
-├── data/           raw/, yolo/, splits/
-├── src/            data/, train/, quant/, eval/, bench/, report/
+├── configs/        data_prep.yaml, data.yaml, calib.yaml, train.yaml, kd.yaml, qat.yaml
+├── data/           raw/, splits/   (data/yolo vive en el disco de Linux, ver D1)
+├── src/            data/, train/, quant/, eval/, bench/, report/, utils/
 ├── scripts/        check_env.py y comandos .sh para lanzar entrenamientos
 ├── runs/           teacher/, students/, exports/   (no subir a git)
-├── results/        metrics.csv, tables/, figures/
+├── results/        metrics.csv, LOG.md, tables/ (incl. data_audit.csv), figures/
 └── paper/          borrador del paper y referencias
 ```
 
@@ -135,13 +207,16 @@ proyecto/
 
 ## Estado actual
 
-- [x] Revisión sistemática y borrador del paper (v1)
+- [x] Revisión sistemática y borrador del paper (v3)
 - [x] Fase 0 — Entorno (2026-09-27, `results/env_check.json`)
-- [x] Fase 1 — Datos (2026-09-27, clases D00/D20/D40)
-- [ ] Fase 2 — Maestro
-- [ ] Fase 3 — Alumno base
-- [ ] Fase 4 — Alumno KD
-- [ ] Fase 5 — Exportación
+- [ ] Fase 1 — Datos (REHACER: 4 clases + auditoría). Versión anterior (3 clases) en commit ed4f531.
+- [ ] Fase 1b — Pruebas de tiempo
+- [ ] Fase 2 — Maestro (script `src/train/train_teacher.py` listo; ajustar a D2 tras Fase 1b)
+- [ ] Fase 4a — Implementación CWD
+- [ ] Fase 3 — Alumnos base
+- [ ] Fase 4b — Piloto λ + alumnos KD
+- [ ] Fase 5 — PTQ
+- [ ] Fase 5b — QAT
 - [ ] Fase 6 — Evaluación
 - [ ] Fase 7 — Estadística
 - [ ] Fase 8 — Eficiencia

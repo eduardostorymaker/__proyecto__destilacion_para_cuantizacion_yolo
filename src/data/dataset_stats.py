@@ -68,6 +68,11 @@ def main() -> None:
         print(f"{fila[0]:<6} {fila[1]:<18} {fila[2]:>9} {fila[3]:>11} {fila[4]:>8}")
     print(f"\nGuardado en {salida.relative_to(RAIZ)}")
 
+    inst_test = por_split["test"][2]
+    for c, minimo in cfg.get("aviso_min_instancias_test", {}).items():
+        if inst_test[c] < minimo:
+            print(f"⚠️  AVISO: {c} tiene {inst_test[c]} instancias en test (< {minimo}).")
+
 
 if __name__ == "__main__":
     main()
