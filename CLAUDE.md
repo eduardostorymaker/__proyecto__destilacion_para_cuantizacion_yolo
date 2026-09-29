@@ -26,9 +26,10 @@ la metodología.
 - Python 3.13 (venv `~/.venvs/yolokd`, creado con `scripts/setup_wsl.sh`), PyTorch con CUDA 13.0,
   `ultralytics` (versiones exactas en requirements.txt), TensorRT 10.16, OpenVINO, onnx, pandas,
   numpy, scipy, matplotlib, pycocotools.
-- TensorRT se mantiene en la rama 10 (no 11): conserva la PTQ INT8 clásica (IInt8EntropyCalibrator2,
-  todas las capas en INT8). TensorRT 11 obliga a Q/DQ con ModelOpt y deja capas en float.
-  Por esto Python ≤ 3.13 (TensorRT 10 no tiene versión para 3.14).
+- TensorRT se mantiene en la rama 10 (no 11) para conservar la PTQ implícita con el calibrador
+  del exportador de Ultralytics (ver D4). TensorRT 11 elimina la calibración implícita y obliga a
+  Q/DQ explícito con ModelOpt. Por esto Python ≤ 3.13 (TensorRT 10 no tiene versión para 3.14).
+- ultralytics fijado en 8.4.164: si cambia la versión, puede cambiar el calibrador INT8.
 
 ## Diseño experimental (NO cambiar sin preguntarme)
 
@@ -38,6 +39,8 @@ la metodología.
   etiquetas pero se conservan las imágenes, las grietas transversales se vuelven "fondo"
   (etiquetas faltantes), lo que puede dañar el aprendizaje de D00. Sus pocas instancias se
   tratan en el análisis (sensibilidad sin D10), no en los datos.)
+  Con la semilla 42, D10 queda con 9 instancias en test (aceptado 2026-09-28; no se cambia la
+  semilla). La mAP de 4 clases es la métrica principal; la mAP sin D10 es sensibilidad.
 - Reglas de limpieza (aplicar en este orden y registrar cada conteo):
   1. Etiquetas de otras clases: se eliminan SOLO esas cajas; la imagen se conserva.
   2. Cajas fuera de la imagen: recortar a los bordes.
@@ -74,8 +77,8 @@ la metodología.
 - Maestro: patience=50, seed=0, 1 corrida.
 - Alumnos (base y KD): patience=300 (sin parada temprana), seeds 0, 1, 2; se usa best.pt
   (fitness de Ultralytics sobre validación).
-- workers=8. cache: 'ram' si cabe en los 24 GB de WSL; si no, 'disk'. Mismo valor para todas
-  las corridas.
+- workers=8. cache='disk' para todas las corridas ('ram' es no determinista en Ultralytics con
+  deterministic=True).
 - Todo en `configs/train.yaml`; guardar args.yaml de cada corrida.
 
 ### D3. Destilación (solo alumno KD)
@@ -94,15 +97,19 @@ la metodología.
 ### D4. Cuantización post-entrenamiento (PTQ)
 - Punto de partida: best.pt en FP32 de cada modelo. FP16 e INT8 se generan POR SEPARADO desde ese
   modelo (no hay paso FP32 → FP16 → INT8).
-- GPU (RTX 4060, TensorRT 10): FP32 (half=False), FP16 (half=True), INT8 (int8=True,
-  IInt8EntropyCalibrator2).
+- GPU (RTX 4060, TensorRT 10): FP32 (half=False), FP16 (half=True), INT8 (int8=True) con el
+  exportador de Ultralytics 8.4.164 tal cual (decisión 2026-09-28): calibración implícita MinMax
+  (`IInt8Calibrator`, MINMAX_CALIBRATION), sigmoide de la cabeza forzada a FP32 y convoluciones de
+  salida de la cabeza y DFL forzadas a FP16; el flag FP16 está activo, así que TensorRT puede
+  dejar otras capas en FP16. Motivo: representa el uso práctico y es coherente con la calibración
+  por máximo de ModelOpt en la QAT.
 - CPU (i7-12700KF, OpenVINO): FP32 e INT8 (NNCF).
 - Exportación: imgsz=640, batch=1, dynamic=False, simplify=True.
 - Calibración INT8: `data/splits/calib.txt` = 500 imágenes de TRAIN, semilla 42, estratificadas
   por clase. `configs/calib.yaml` con 'train' y 'val' apuntando a calib.txt, para que nunca se
   calibre con val o test. Mismas imágenes para todos los modelos y para la QAT.
-- Registrar por engine qué capas quedaron en INT8, FP16 o FP32 (TensorRT engine inspector),
-  porque TensorRT puede dejar capas en mayor precisión.
+- Engine inspector: por cada engine INT8, reportar número y porcentaje de capas en INT8, FP16 y
+  FP32 en `results/tables/engine_layers.csv`.
 - Se cuantizan: 6 alumnos (todas las precisiones) y el maestro (TensorRT FP16 e INT8, como
   referencia).
 
@@ -117,6 +124,8 @@ la metodología.
      las últimas épocas del entrenamiento), resto igual a D2. Proponer cambios si la prueba de
      humo lo sugiere.
   4. Exportar ONNX con Q/DQ → TensorRT INT8.
+- Confirmar qué calibrador usa ModelOpt por defecto para las activaciones y registrarlo
+  (LOG.md y Métodos).
 - `configs/qat.yaml`. Prueba de humo con 1 alumno y 1 época antes de las 6 corridas.
 - Si la integración se bloquea seriamente, avisar: la QAT es opcional y el paper puede seguir
   solo con PTQ.
@@ -133,17 +142,70 @@ la metodología.
 - Sensibilidad: mAP recalculada sin D10 (3 clases).
 - `results/metrics.csv`: una fila por modelo/semilla/formato/precisión.
 
-### D7. Estadística
-- Media ± d.e. de las 3 semillas.
-- Bootstrap pareado: 1000 remuestreos con reemplazo de imágenes de test, semilla 42, MISMOS
-  índices para todos los modelos en cada réplica. IC 95 % por percentiles para:
-  (a) ΔmAP_base − ΔmAP_kd con PTQ INT8,
-  (b) ΔmAP_base − ΔmAP_kd con QAT INT8,
-  (c) ECE_base − ECE_kd en INT8 (PTQ y QAT),
-  (d) mAP(KD + PTQ INT8) − mAP(base + QAT INT8).
-  En cada réplica se calcula cada diferencia para los pares de la misma semilla y se promedia
-  sobre las 3 semillas.
-- `results/tables/bootstrap.csv`. Usar una implementación rápida de COCO eval.
+### D7. Estadística (preespecificada)
+Este análisis se fija ANTES de tener resultados. Los valores de alfa, delta, B y las hipótesis NO
+se cambian después de ver los datos. Si durante la implementación algo obliga a cambiarlo,
+preguntar primero.
+
+Descriptivo:
+- Media ± d.e. de las 3 semillas para todas las métricas y modelos.
+
+Bootstrap pareado:
+- B = 1000 remuestreos con reemplazo de las 1 166 imágenes de test, semilla 42.
+- En cada réplica se usan los MISMOS índices de imágenes para TODOS los modelos (base, KD,
+  maestro, todas las precisiones).
+- Cada diferencia se calcula por semilla, emparejando base_s con kd_s (s = 0, 1, 2), y luego se
+  promedia sobre las 3 semillas.
+- mAP en cada réplica: evaluación tipo COCO sobre las imágenes remuestreadas (una imagen repetida
+  cuenta tantas veces como aparezca). Usar una implementación rápida (p. ej., faster-coco-eval) y
+  verificar que, sin remuestreo, reproduce la mAP de Ultralytics (diferencia < 0.001); si no
+  coincide, avisar antes de seguir.
+- Si una réplica no contiene instancias de una clase, esa clase se excluye de la mAP de esa
+  réplica en TODOS los modelos por igual; registrar cuántas réplicas se vieron afectadas.
+- Guardar la distribución bootstrap completa de cada estadístico en `results/bootstrap/*.npy`.
+
+Definiciones:
+- dmAP50 = mAP@0.5(FP32) − mAP@0.5(cuantizado), 4 clases.
+- ECE según D6 (conf ≥ 0.25, IoU ≥ 0.5, 15 intervalos).
+- Convención de signo: D > 0 favorece al alumno KD en H1 y H2.
+
+Familia confirmatoria (5 contrastes, alfa global = 0.05, corrección Holm):
+- H1a: D = dmAP50_base − dmAP50_kd, PTQ INT8.   H0: D = 0 (bilateral)
+- H1b: D = dmAP50_base − dmAP50_kd, QAT INT8.   H0: D = 0 (bilateral)
+- H2a: D = ECE_base − ECE_kd, PTQ INT8.         H0: D = 0 (bilateral)
+- H2b: D = ECE_base − ECE_kd, QAT INT8.         H0: D = 0 (bilateral)
+- H3 : D = mAP50(kd + PTQ INT8) − mAP50(base + QAT INT8). No inferioridad con margen
+  delta = 0.010 (1 punto de mAP@0.5). H0: D ≤ −delta ; H1: D > −delta (unilateral).
+Si la QAT se descarta por problemas técnicos, la familia se reduce a H1a y H2a (Holm con 2
+contrastes) y se reporta así en el paper.
+
+Valor p (bootstrap centrado, Efron y Tibshirani, 1993):
+- Bilateral:      p = (1 + #{ |D*_b − D_obs| ≥ |D_obs| }) / (B + 1)
+- H3 unilateral:  p = (1 + #{ D*_b − D_obs ≥ D_obs + delta }) / (B + 1)
+  donde D_obs es el estadístico en la muestra original y D*_b en la réplica b.
+- Corrección de Holm sobre los valores p de la familia; reportar p crudo y p ajustado.
+
+Intervalos:
+- IC 95 % por percentiles (2.5 y 97.5) para H1a–H2b.
+- Para H3: IC 90 % bilateral; se concluye no inferioridad si su límite inferior es mayor que
+  −delta (equivale al contraste unilateral al 5 %).
+
+Consistencia entre semillas:
+- Para cada contraste, reportar el signo de D en cada semilla por separado (p. ej., "3/3 semillas
+  positivas"). Es descriptivo, no un contraste.
+
+Análisis exploratorios (IC 95 %, sin valor p ni afirmación de significancia): AP@0.5 de D40,
+dmAP con mAP@0.5:0.95, mAP sin D10, dmAP del maestro frente a los alumnos, FP16 frente a FP32,
+precisión y recall en INT8.
+
+Salidas:
+- `results/tables/hypothesis_tests.csv` con columnas: hipotesis, estadistico, D_obs, IC_inf,
+  IC_sup, p_crudo, p_holm, decision (rechaza H0 / no rechaza H0), signos_por_semilla.
+- `results/tables/exploratory.csv` con estadístico, D_obs, IC_inf, IC_sup.
+
+La Fase 7 se implementa y se prueba con predicciones de modelos de prueba (p. ej., los de la
+prueba de humo) antes de tener los modelos finales, para que el análisis esté listo y congelado
+antes de ver los resultados reales.
 
 ### D8. Eficiencia
 - Batch 1, imgsz 640, 50 calentamientos + 500 medidas; mediana y media.
@@ -209,7 +271,7 @@ proyecto/
 
 - [x] Revisión sistemática y borrador del paper (v3)
 - [x] Fase 0 — Entorno (2026-09-27, `results/env_check.json`)
-- [ ] Fase 1 — Datos (REHACER: 4 clases + auditoría). Versión anterior (3 clases) en commit ed4f531.
+- [x] Fase 1 — Datos (2026-09-28, 4 clases, auditoría en `results/tables/data_audit.csv`)
 - [ ] Fase 1b — Pruebas de tiempo
 - [ ] Fase 2 — Maestro (script `src/train/train_teacher.py` listo; ajustar a D2 tras Fase 1b)
 - [ ] Fase 4a — Implementación CWD

@@ -9,11 +9,12 @@
 # Núcleo de entrenamiento
 torch==2.14.0+cu130
 torchvision==0.29.0+cu130
+# NO cambiar: la versión define el calibrador INT8 de TensorRT (ver CLAUDE.md, D4)
 ultralytics==8.4.164
 
 # Exportación y cuantización
-# TensorRT 10.x (no 11): la rama 10 conserva la PTQ INT8 clásica con IInt8EntropyCalibrator2
-# sobre todas las capas; TensorRT 11 obliga a Q/DQ explícito vía ModelOpt y deja capas en float.
+# TensorRT 10.x (no 11): conserva la PTQ implícita con el calibrador del exportador de Ultralytics
+# (MinMax); TensorRT 11 elimina la calibración implícita y obliga a Q/DQ explícito vía ModelOpt.
 tensorrt-cu13==10.16.1.11
 openvino==2026.4.0
 nncf==3.4.0

@@ -78,3 +78,16 @@
 - Test: D00 227 · D10 **9** (9 imágenes) · D20 300 · D40 464 instancias. **Aviso: D10 < 10 en test.**
 - Calibración: 500 imágenes de train estratificadas (iterstrat devolvió 503; se quitaron 3 de fondo
   al azar con semilla 42). Imágenes con D00 72 · D10 4 · D20 114 · D40 99. Verificado: 0 fuera de train.
+
+## 2026-09-28 — Decisiones tras la auditoría (Fase 1 aprobada)
+
+- Datos aprobados. Clases eliminadas por la regla 1 y su justificación: D01/D11 (juntas de
+  construcción), D43/D44 (desgaste de pasos peatonales y de líneas) y D50 (tapas de alcantarilla)
+  no son clases de la tarea estándar RDD (Maeda et al., 2018). "D0w0" (1 caja) se considera una
+  etiqueta ambigua y se elimina sin corregirla a mano. El 58.2 % de fondo se conserva sin submuestrear.
+- D10: se mantiene la partición con semilla 42 (9 instancias en test). mAP de 4 clases = métrica
+  principal; mAP sin D10 = análisis de sensibilidad.
+- Calibrador INT8 (D4): exportador de Ultralytics 8.4.164 tal cual → MinMax, sigmoide de la cabeza
+  en FP32, convoluciones de salida y DFL en FP16. Se reportará `results/tables/engine_layers.csv`.
+- Caché de entrenamiento: `cache='disk'` para todas las corridas (D2).
+- D7 reemplazada por el plan estadístico preespecificado (H1a, H1b, H2a, H2b, H3; Holm; δ = 0.010).
