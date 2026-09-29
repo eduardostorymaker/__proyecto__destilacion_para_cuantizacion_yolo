@@ -1,0 +1,3 @@
+caso,amp,batch,s_epoca_total,s_epoca_train,s_epoca_val,vram_max_reservada_gb,vram_max_asignada_gb,nan,perdidas_ultima_epoca
+maestro_amp,True,8,123.4,111.8,11.6,4.21,3.92,False,"{""train/box_loss"": 2.32, ""train/cls_loss"": 3.53, ""train/dfl_loss"": 2.258, ""val/box_loss"": 2.357, ""val/cls_loss"": 3.314, ""val/dfl_loss"": 2.37}"
+alumno_amp,True,8,32.5,28.5,4.0,1.47,1.1,False,"{""train/box_loss"": 2.324, ""train/cls_loss"": 3.739, ""train/dfl_loss"": 2.198, ""val/box_loss"": 2.316, ""val/cls_loss"": 3.419, ""val/dfl_loss"": 2.344}"

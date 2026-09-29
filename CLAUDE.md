@@ -70,8 +70,8 @@ la metodología.
   weight_decay=0.0005, warmup_epochs=3, cos_lr=False.
 - Aumentación por defecto de Ultralytics: mosaic=1.0, close_mosaic=10, hsv_h=0.015, hsv_s=0.7,
   hsv_v=0.4, translate=0.1, scale=0.5, fliplr=0.5, mixup=0.0. Sin aumentaciones extra.
-- Precisión de entrenamiento: amp=True (precisión mixta) para TODOS los modelos, salvo que la
-  Fase 1b muestre inestabilidad. AMP no es cuantización: los pesos maestros quedan en FP32 y
+- Precisión de entrenamiento: amp=True (precisión mixta) para TODOS los modelos (maestro, alumnos
+  y QAT); confirmado tras la Fase 1b (2026-09-28): FP32 satura la VRAM y es ~7× más lento. AMP no es cuantización: los pesos maestros quedan en FP32 y
   best.pt es el punto de partida de toda la cuantización.
 - deterministic=True; semillas fijadas en Python, NumPy y PyTorch.
 - Maestro: patience=50, seed=0, 1 corrida.
@@ -272,7 +272,7 @@ proyecto/
 - [x] Revisión sistemática y borrador del paper (v3)
 - [x] Fase 0 — Entorno (2026-09-27, `results/env_check.json`)
 - [x] Fase 1 — Datos (2026-09-28, 4 clases, auditoría en `results/tables/data_audit.csv`)
-- [ ] Fase 1b — Pruebas de tiempo
+- [x] Fase 1b — Pruebas de tiempo (2026-09-28, AMP; ~41 h de GPU estimadas)
 - [ ] Fase 2 — Maestro (script `src/train/train_teacher.py` listo; ajustar a D2 tras Fase 1b)
 - [ ] Fase 4a — Implementación CWD
 - [ ] Fase 3 — Alumnos base

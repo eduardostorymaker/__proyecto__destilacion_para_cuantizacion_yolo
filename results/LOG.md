@@ -91,3 +91,34 @@
   en FP32, convoluciones de salida y DFL en FP16. Se reportará `results/tables/engine_layers.csv`.
 - Caché de entrenamiento: `cache='disk'` para todas las corridas (D2).
 - D7 reemplazada por el plan estadístico preespecificado (H1a, H1b, H2a, H2b, H3; Holm; δ = 0.010).
+
+## 2026-09-28 — Fase 1b: pruebas de tiempo
+
+- `bash scripts/fase1b_tiempos.sh` (config `configs/timing.yaml`), batch 8, imgsz 640, cache disk.
+- Maestro YOLO11m, AMP vs FP32 (tiempo por época de entrenamiento; validación ~12 s aparte):
+
+| Maestro YOLO11m | Época 1 | Épocas 2–3 | VRAM máx. | NaN |
+|---|---|---|---|---|
+| amp=True | 114 s | 111–112 s (+11–12 s val) | 4.2 GB | no |
+| amp=False (FP32) | 947 s | ~810 s (1.2 s/lote, época 2 al 79 %) | 8.07 GB (satura 8 GB) | no |
+
+  FP32 llena la VRAM de la RTX 4060 y desborda a memoria compartida del sistema: ~7× más lento.
+  La prueba FP32 se detuvo en la época 2 (79 %) por decisión del usuario; los datos salen del log.
+- **Decisión (usuario, 2026-09-28): amp=True para todos los modelos (maestro, alumnos y QAT).**
+- Alumno YOLO11n (amp=True): 32.5 s/época (28.5 train + 4.0 val), VRAM 1.47 GB, sin NaN.
+- Maestro YOLO11m (amp=True), promedio épocas 2–3: 123.4 s/época (111.8 train + 11.6 val), VRAM 4.21 GB, sin NaN.
+- Pérdidas (results.csv) finitas y decrecientes en ambos casos; mAP50 de val tras 3 épocas: maestro 0.062, alumno 0.067.
+- Forward del maestro (eval, autocast, batch 8): 52.7 ms/lote × 675 lotes = +36 s por época KD
+  (sin la CWD ni los adaptadores) → época KD estimada ≈ 69 s.
+- Estimación total (AMP; `results/tables/timing.csv`):
+
+| Bloque | Épocas | Horas |
+|---|---|---|
+| Maestro (cota superior, patience=50) | 1 × 300 | 10.3 |
+| Alumnos base | 3 × 300 | 8.1 |
+| Alumnos KD | 3 × 300 | 17.0 |
+| Piloto λ | 3 × 50 | 2.8 |
+| QAT (factor 1.5 supuesto) | 6 × 30 | 2.4 |
+| **Total** | | **40.7 h (~1.7 días de GPU)** |
+
+- **Resultado: Fase 1b completada.**

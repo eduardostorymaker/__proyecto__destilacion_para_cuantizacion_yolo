@@ -1,0 +1,27 @@
+# Fase 1b: pruebas de tiempo antes de los entrenamientos largos.
+# Cada caso entrena `epocas` épocas completas con configs/train.yaml (solo cambia amp y epochs).
+
+epocas: 3
+project: runs/timing
+casos:
+  - {id: maestro_amp,  rol: maestro, amp: true}
+  - {id: maestro_fp32, rol: maestro, amp: false}
+  - {id: alumno_amp,   rol: alumno,  amp: true}
+
+# Costo extra del maestro en KD: paso hacia adelante de YOLO11m (eval, sin gradientes, autocast)
+# con el mismo batch que el alumno.
+forward_maestro:
+  modelo: runs/pretrained/yolo11m.pt
+  calentamiento: 20
+  iteraciones: 100
+
+# Estimación total del proyecto (épocas de cada bloque)
+estimacion:
+  maestro: {epocas: 300, corridas: 1}          # patience=50 puede acortarlo: es cota superior
+  alumnos_base: {epocas: 300, corridas: 3}
+  alumnos_kd: {epocas: 300, corridas: 3}
+  piloto_lambda: {epocas: 50, corridas: 3}
+  qat: {epocas: 30, corridas: 6}
+  # SUPUESTO (no medido): la cuantización simulada de la QAT encarece cada época del alumno.
+  # Se medirá en la prueba de humo de la Fase 5b y se actualizará la estimación.
+  factor_qat: 1.5

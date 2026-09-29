@@ -1,25 +1,34 @@
-# Hiperparámetros de entrenamiento (Fases 2-4).
-# `comun` se aplica al maestro y a los alumnos. Entre alumno base y alumno KD la ÚNICA
-# diferencia debe ser la pérdida CWD (configs/kd.yaml).
+# Hiperparámetros de entrenamiento (diseño D2 del CLAUDE.md).
+# `comun` se aplica al maestro y a los alumnos; el bloque `sobrescribe` de cada rol reemplaza
+# solo lo indicado. Entre alumno base y alumno KD la ÚNICA diferencia es la pérdida CWD (kd.yaml).
 
 comun:
   data: configs/data.yaml
   imgsz: 640
-  epochs: 150
-  patience: 0            # 0 = sin parada temprana: todos corren exactamente `epochs`
-  batch: 16
-  optimizer: SGD         # fijo (no 'auto', que elige según nº de iteraciones)
+  batch: 8
+  nbs: 64
+  epochs: 300
+  optimizer: SGD         # explícito (no 'auto')
   lr0: 0.01
   lrf: 0.01
   momentum: 0.937
   weight_decay: 0.0005
   warmup_epochs: 3.0
-  cos_lr: true
-  close_mosaic: 10       # aumentación: valores por defecto de ultralytics
-  amp: true
+  cos_lr: false
+  # Aumentación: valores por defecto de Ultralytics, escritos explícitamente
+  mosaic: 1.0
+  close_mosaic: 10
+  hsv_h: 0.015
+  hsv_s: 0.7
+  hsv_v: 0.4
+  translate: 0.1
+  scale: 0.5
+  fliplr: 0.5
+  mixup: 0.0
+  amp: true              # precisión mixta; confirmada en Fase 1b (FP32 satura la VRAM, ~7x más lento)
   deterministic: true
   workers: 8
-  cache: false           # los datos ya están en el disco de Linux (~4 GB/s)
+  cache: disk            # 'ram' no es determinista en Ultralytics
   pretrained: true
   save_period: -1
   plots: true
@@ -30,19 +39,18 @@ maestro:
   seed: 0
   project: runs/teacher
   name: teacher_s0
-  # Sobrescribe `comun` solo para el maestro.
-  # batch 16 satura la RTX 4060 (7.8/8 GB, 2x más lento); batch 8 usa 4.1 GB.
-  # ultralytics acumula gradientes hasta nbs=64, así que el paso efectivo es equivalente.
   sobrescribe:
-    batch: 8
+    patience: 50
 
 alumno:
   modelo: runs/pretrained/yolo11n.pt
   semillas: [0, 1, 2]
   project: runs/students
   # name = student_{kd|base}_s{seed}
+  sobrescribe:
+    patience: 300        # = epochs: sin parada temprana
 
-# Prueba de humo: verifica que el script corre y que el batch cabe en la GPU
+# Prueba de humo: verifica que el script corre
 humo:
   epochs: 1
   fraction: 0.05
