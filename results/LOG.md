@@ -122,3 +122,11 @@
 | **Total** | | **40.7 h (~1.7 días de GPU)** |
 
 - **Resultado: Fase 1b completada.**
+
+## 2026-09-29 — Fase 2: maestro listo para lanzar
+
+- Corrida previa `runs/teacher/teacher_s0` (diseño v2: 3 clases, 150 épocas, cos_lr; detenida en la
+  época 47) movida a `runs/obsoletos/teacher_s0_v2_3clases_150ep`. No se usa en el diseño v3.
+- Prueba de humo (`bash scripts/train_teacher.sh --humo`) con la config D2 OK: 4 clases, amp, batch 8,
+  nbs 64, patience 50, cache disk, SGD, cos_lr=False, seed 0.
+- Pendiente: entrenamiento completo (`bash scripts/train_teacher.sh`, ≤ ~10 h).

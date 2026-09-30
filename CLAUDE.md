@@ -273,7 +273,7 @@ proyecto/
 - [x] Fase 0 — Entorno (2026-09-27, `results/env_check.json`)
 - [x] Fase 1 — Datos (2026-09-28, 4 clases, auditoría en `results/tables/data_audit.csv`)
 - [x] Fase 1b — Pruebas de tiempo (2026-09-28, AMP; ~41 h de GPU estimadas)
-- [ ] Fase 2 — Maestro (script `src/train/train_teacher.py` listo; ajustar a D2 tras Fase 1b)
+- [ ] Fase 2 — Maestro (listo para lanzar: `bash scripts/train_teacher.sh`; humo OK 2026-09-29)
 - [ ] Fase 4a — Implementación CWD
 - [ ] Fase 3 — Alumnos base
 - [ ] Fase 4b — Piloto λ + alumnos KD
