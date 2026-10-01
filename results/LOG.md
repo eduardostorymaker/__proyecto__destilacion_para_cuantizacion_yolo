@@ -146,7 +146,23 @@
 | D40 | 482 | 0.451 | 0.477 | 0.435 | 0.174 |
 
 - last.pt (época 198): mAP@0.5 0.346, mAP@0.5:0.95 0.143. Máx. mAP@0.5 de la corrida: 0.351 (época 159).
-- Sin D10 (3 clases), mAP@0.5 ≈ 0.447 (promedio simple de D00, D20, D40).
+- Revalidación de best.pt en val (batch 8, conf 0.001, iou 0.7; el 0.344 de arriba usa batch 16 de
+  la validación final del entrenamiento, diferencia por el relleno de imágenes):
+  AP@0.5 D00 0.3114 · D10 0.0342 · D20 0.5971 · D40 0.4372 → mAP@0.5 (4 clases) 0.3450, mAP@0.5:0.95 0.1471.
+  **Sin D10 (3 clases): mAP@0.5 = 0.4486, mAP@0.5:0.95 = 0.1921.**
+- Convergencia (`results/figures/teacher_convergence.png`): fitness máx. en la época 148 (0.1676);
+  máx. mAP@0.5:0.95 también en la 148 (0.1479); máx. mAP@0.5 en la 159 (0.3510).
+  Regresión lineal de la mAP de val por época:
+
+| Tramo | Métrica | Cambio por 50 épocas | IC 95 % | p |
+|---|---|---|---|---|
+| 149–198 (tras best) | mAP@0.5 | −0.0026 | [−0.0053, +0.0002] | 0.075 |
+| 149–198 (tras best) | mAP@0.5:0.95 | −0.0019 | [−0.0025, −0.0013] | <0.001 |
+| 99–148 (antes de best) | mAP@0.5 | +0.0279 | [+0.0238, +0.0319] | <0.001 |
+| 99–148 (antes de best) | mAP@0.5:0.95 | +0.0127 | [+0.0113, +0.0141] | <0.001 |
+
+  Conclusión: el maestro convergió; en las últimas 50 épocas la mAP@0.5 está plana y la
+  mAP@0.5:0.95 baja levemente, así que la parada temprana no cortó un aprendizaje en curso.
 - Observaciones: la mAP se estabiliza desde ~época 120; la pérdida de caja en val sube desde
   ~época 90 (1.93 → 2.09) mientras la de train sigue bajando → sobreajuste en localización, que la
   parada temprana corta. La precisión global oscila (0.3–0.6) por D10 (9 instancias en val).
