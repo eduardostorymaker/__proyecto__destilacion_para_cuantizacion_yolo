@@ -130,3 +130,44 @@
 - Prueba de humo (`bash scripts/train_teacher.sh --humo`) con la config D2 OK: 4 clases, amp, batch 8,
   nbs 64, patience 50, cache disk, SGD, cos_lr=False, seed 0.
 - Pendiente: entrenamiento completo (`bash scripts/train_teacher.sh`, ≤ ~10 h).
+
+## 2026-09-30 — Fase 2: maestro entrenado
+
+- `runs/teacher/teacher_s0` (log `runs/logs/teacher_20260929_231734.log`). 198 épocas en 6.2 h.
+- EarlyStopping (patience=50): **best.pt = época 148** (fitness máx.), **last.pt = época 198**.
+- Métricas de VALIDACIÓN (no test) de best.pt, validación final de Ultralytics:
+
+| Clase | Inst. val | P | R | mAP@0.5 | mAP@0.5:0.95 |
+|---|---|---|---|---|---|
+| **Todas** | 1 026 | 0.362 | 0.389 | **0.344** | **0.148** |
+| D00 | 231 | 0.356 | 0.346 | 0.309 | 0.135 |
+| D10 | 9 | 0.104 | 0.111 | 0.035 | 0.013 |
+| D20 | 304 | 0.538 | 0.622 | 0.597 | 0.270 |
+| D40 | 482 | 0.451 | 0.477 | 0.435 | 0.174 |
+
+- last.pt (época 198): mAP@0.5 0.346, mAP@0.5:0.95 0.143. Máx. mAP@0.5 de la corrida: 0.351 (época 159).
+- Sin D10 (3 clases), mAP@0.5 ≈ 0.447 (promedio simple de D00, D20, D40).
+- Observaciones: la mAP se estabiliza desde ~época 120; la pérdida de caja en val sube desde
+  ~época 90 (1.93 → 2.09) mientras la de train sigue bajando → sobreajuste en localización, que la
+  parada temprana corta. La precisión global oscila (0.3–0.6) por D10 (9 instancias en val).
+- **Resultado: Fase 2 completada.** Maestro para KD: `runs/teacher/teacher_s0/weights/best.pt`.
+
+## 2026-09-30 — Fase 4a: implementación CWD y prueba de humo
+
+- Implementación propia (`src/train/cwd.py`) como subclase de `DetectionTrainer`. Fórmula CWD adaptada de
+  MMRazor (`open-mmlab/mmrazor`, `mmrazor/models/losses/cwd.py`, commit 0919f692878fe0037ff94bc90e46eed721c64a39).
+  Ultralytics 8.4.164 trae `DistillationModel` propio, pero usa L2 ponderada por confianza con proyector MLP
+  (no CWD), así que no se usa.
+- Detalles: características = entradas de Detect (P3, P4, P5) tomadas de `preds["feats"]` (sin hooks);
+  maestro `runs/teacher/teacher_s0/weights/best.pt` congelado, eval(), no_grad, autocast, mismo batch aumentado;
+  adaptadores conv 1×1 64/128/256 → 256/512/512 canales (214 272 parámetros) fuera del modelo (grupo propio del
+  optimizador SGD con las mismas lr/momentum/weight decay; recorte de gradiente norma 10 como el modelo;
+  inicializados con `fork_rng` para no alterar la secuencia aleatoria respecto del alumno base).
+  L = L_det + λ·L_CWD·batch (L_det de Ultralytics ya viene × batch); τ = 1.0; L_CWD sumada en los 3 niveles.
+  `results.csv` registra `train/cwd` (L_CWD sin λ) por época.
+- Prueba de humo (`--kd on --seed 0 --humo`: λ = 1.0, 2 épocas, fraction 0.05) + verificación
+  `python -m src.train.check_kd`:
+  - L_CWD 1.4837 → 1.4432 (baja); L_det (box+cls+dfl) 16.61 → 14.84. Con λ = 1, L_CWD ≈ 9 % de L_det.
+  - best.pt KD y base: 499 tensores con claves y formas idénticas; sin adaptadores ni maestro.
+  - ONNX KD y base: 2 624 974 parámetros ambos.
+- **Resultado: Fase 4a completada.** Listo para Fase 3 (`--kd off --seed N`) y piloto de λ (`--kd on --piloto λ`).

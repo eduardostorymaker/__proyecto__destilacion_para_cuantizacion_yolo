@@ -1,0 +1,26 @@
+# Destilación CWD (diseño D3 del CLAUDE.md). Solo la usa el alumno KD.
+# Pérdida: L = L_det + λ · L_CWD  (L_CWD sumada sobre P3, P4, P5 = entradas de la cabeza Detect).
+#
+# Referencia de la fórmula (adaptada, no copiada): MMRazor, ChannelWiseDivergence
+#   https://github.com/open-mmlab/mmrazor/blob/0919f692878fe0037ff94bc90e46eed721c64a39/mmrazor/models/losses/cwd.py
+#   Shu et al., "Channel-wise Knowledge Distillation for Dense Prediction", ICCV 2021.
+
+maestro: runs/teacher/teacher_s0/weights/best.pt   # Fase 2 (época 148)
+tau: 1.0
+lambda: null          # se fija tras el piloto (Fase 4b); obligatorio para las corridas finales
+
+# Escala: la pérdida de detección de Ultralytics se multiplica por el tamaño del batch;
+# L_CWD (por imagen, como en MMRazor) se multiplica igual para que λ sea relativo a L_det.
+
+piloto:
+  lambdas: [0.5, 1.0, 2.0]
+  seed: 0
+  epocas: 50
+  project: runs/pilot
+  # name = pilot_kd_l{λ}_s0 ; elección por mAP@0.5:0.95 de VALIDACIÓN (nunca test)
+
+humo:
+  lambda: 1.0
+  epochs: 2
+  fraction: 0.05
+  project: runs/smoke
