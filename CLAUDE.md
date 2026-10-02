@@ -278,7 +278,7 @@ proyecto/
 - [x] Fase 1 — Datos (2026-09-28, 4 clases, auditoría en `results/tables/data_audit.csv`)
 - [x] Fase 1b — Pruebas de tiempo (2026-09-28, AMP; ~41 h de GPU estimadas)
 - [x] Fase 2 — Maestro YOLO11m (2026-09-30; best.pt época 148, val mAP@0.5 0.344 / mAP@0.5:0.95 0.148)
-- [ ] Fase 2b — Maestro YOLO11l (listo para lanzar: `bash scripts/train_teacher.sh --rol maestro_l`) y selección
+- [x] Fase 2b — Maestro YOLO11l (2026-10-02; val mAP@0.5:0.95 0.1444 < 0.1571) → regla: se usa YOLO11m
 - [x] Fase 4a — Implementación CWD (2026-09-30, `src/train/cwd.py`; humo y verificación OK)
 - [x] Fase 3 — Alumnos base (2026-10-01; val mAP@0.5 0.3415 ± 0.0215; alerta: maestro apenas mejor)
 - [ ] Fase 4b — Piloto λ + alumnos KD

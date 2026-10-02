@@ -5,7 +5,7 @@
 #   https://github.com/open-mmlab/mmrazor/blob/0919f692878fe0037ff94bc90e46eed721c64a39/mmrazor/models/losses/cwd.py
 #   Shu et al., "Channel-wise Knowledge Distillation for Dense Prediction", ICCV 2021.
 
-maestro: runs/teacher/teacher_s0/weights/best.pt   # maestro en uso; se actualiza tras aplicar seleccion_maestro
+maestro: runs/teacher/teacher_s0/weights/best.pt   # YOLO11m, elegido el 2026-10-02 con seleccion_maestro
 
 # Dos maestros candidatos (decisión 2026-10-01). Regla fijada ANTES de ver el resultado del 11l:
 # revalidar best.pt de ambos en VALIDACIÓN (nunca test) con el mismo procedimiento
@@ -14,7 +14,7 @@ maestro: runs/teacher/teacher_s0/weights/best.pt   # maestro en uso; se actualiz
 seleccion_maestro:
   candidatos:
     yolo11m: runs/teacher/teacher_s0/weights/best.pt     # val mAP@0.5:0.95 = 0.1471 (revalidación)
-    yolo11l: runs/teacher/teacher_l_s0/weights/best.pt
+    yolo11l: runs/teacher/teacher_l_s0/weights/best.pt   # val mAP@0.5:0.95 = 0.1444 → no supera 0.1571
   metrica: mAP@0.5:0.95 de validación (4 clases)
   margen: 0.010
 tau: 1.0

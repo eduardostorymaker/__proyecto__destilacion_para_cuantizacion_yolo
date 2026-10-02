@@ -246,3 +246,32 @@
 - Prueba de humo `bash scripts/train_teacher.sh --rol maestro_l --humo` OK (args: yolo11l, batch 8, amp,
   patience 50, cache disk).
 - Pendiente: entrenamiento completo (~8–12 h).
+
+## 2026-10-02 — Fase 2b: maestro YOLO11l entrenado y selección de maestro
+
+- `bash scripts/train_teacher.sh --rol maestro_l` → `runs/teacher/teacher_l_s0`. 155 épocas en 6.1 h, sin NaN.
+  EarlyStopping (patience 50): best.pt = época 105, last.pt = época 155.
+
+| | YOLO11m (teacher_s0) | YOLO11l (teacher_l_s0) |
+|---|---|---|
+| Épocas / horas | 198 / 6.2 h | 155 / 6.1 h |
+| Época best / last | 148 / 198 | 105 / 155 |
+| Máx. mAP@0.5 en la corrida | 0.3510 (ép. 159) | 0.3428 (ép. 133) |
+
+- Revalidación de best.pt en VALIDACIÓN (imgsz 640, batch 8, conf 0.001, iou 0.7):
+
+| Maestro | mAP@0.5 | **mAP@0.5:0.95** | D00 | D10 | D20 | D40 | mAP@0.5 sin D10 | mAP@0.5:0.95 sin D10 | P | R |
+|---|---|---|---|---|---|---|---|---|---|---|
+| YOLO11m | 0.3450 | **0.1471** | 0.3114 | 0.0342 | 0.5971 | 0.4372 | 0.4486 | 0.1921 | 0.363 | 0.389 |
+| YOLO11l | 0.3389 | **0.1444** | 0.2839 | 0.0731 | 0.5727 | 0.4261 | 0.4276 | 0.1814 | 0.437 | 0.342 |
+
+- **Regla de selección (fijada el 2026-10-01): YOLO11l necesitaba mAP@0.5:0.95 ≥ 0.1571; obtuvo 0.1444
+  (−0.0027 frente al 11m). → Se usa YOLO11m** (`configs/kd.yaml` sin cambios de ruta). Ambos se conservan.
+- Curvas (`results/figures/teachers_m_vs_l.png`): ambos maestros siguen trayectorias casi idénticas época a
+  época hasta ~120 (misma semilla y orden de datos); el 11l tiene un pico en la época 105 y luego se mantiene
+  en ~0.14 de mAP@0.5:0.95, por debajo del 11m. Regresión épocas 106–155 del 11l: +0.0024 por 50 ép.
+  (IC 95 % ±0.0019), arrastrada por la caída inmediatamente posterior al pico; aun extrapolada a 300 épocas
+  quedaría lejos del umbral (0.1571).
+- Conclusión: más capacidad (+26 % de parámetros) no mejora al maestro en RDD2022-India; refuerza que el
+  techo lo pone el conjunto de datos, no el tamaño del modelo. Se documenta en Limitaciones.
+- **Resultado: Fase 2b completada.**
