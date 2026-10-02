@@ -42,6 +42,17 @@ maestro:
   sobrescribe:
     patience: 50
 
+# Segundo maestro candidato (decisión 2026-10-01): misma config que `maestro`, solo cambia el modelo.
+# Entre teacher_s0 (11m) y teacher_l_s0 (11l) se elige uno con la regla de configs/kd.yaml
+# (seleccion_maestro), usando solo VALIDACIÓN.
+maestro_l:
+  modelo: runs/pretrained/yolo11l.pt
+  seed: 0
+  project: runs/teacher
+  name: teacher_l_s0
+  sobrescribe:
+    patience: 50
+
 alumno:
   modelo: runs/pretrained/yolo11n.pt
   semillas: [0, 1, 2]

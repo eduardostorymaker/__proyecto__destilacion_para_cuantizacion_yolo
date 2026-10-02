@@ -64,7 +64,7 @@ la metodología.
   Si D10 queda con < 10 instancias en test, avisar.
 
 ### D2. Entrenamiento (común a maestro y alumnos)
-- Pesos iniciales COCO: yolo11m.pt (maestro), yolo11n.pt (alumnos).
+- Pesos iniciales COCO: yolo11m.pt y yolo11l.pt (maestros candidatos), yolo11n.pt (alumnos).
 - imgsz=640, batch=8, nbs=64, epochs=300.
 - optimizer='SGD' (explícito, NO 'auto'), lr0=0.01, lrf=0.01, momentum=0.937,
   weight_decay=0.0005, warmup_epochs=3, cos_lr=False.
@@ -74,7 +74,11 @@ la metodología.
   y QAT); confirmado tras la Fase 1b (2026-09-28): FP32 satura la VRAM y es ~7× más lento. AMP no es cuantización: los pesos maestros quedan en FP32 y
   best.pt es el punto de partida de toda la cuantización.
 - deterministic=True; semillas fijadas en Python, NumPy y PyTorch.
-- Maestro: patience=50, seed=0, 1 corrida.
+- Maestros: patience=50, seed=0, 1 corrida cada uno. Dos candidatos (decisión 2026-10-01, porque el
+  YOLO11m apenas supera a los alumnos base): YOLO11m (`teacher_s0`) y YOLO11l (`teacher_l_s0`), misma
+  config D2. Regla de selección fijada antes del resultado del 11l (`configs/kd.yaml`,
+  seleccion_maestro): revalidar best.pt de ambos en VALIDACIÓN (imgsz 640, batch 8, conf 0.001,
+  iou 0.7); se usa YOLO11l solo si su mAP@0.5:0.95 supera a la del 11m en ≥ 0.010. Ambos se conservan.
 - Alumnos (base y KD): patience=300 (sin parada temprana), seeds 0, 1, 2; se usa best.pt
   (fitness de Ultralytics sobre validación).
 - workers=8. cache='disk' para todas las corridas ('ram' es no determinista en Ultralytics con
@@ -83,7 +87,7 @@ la metodología.
 
 ### D3. Destilación (solo alumno KD)
 - CWD (Shu et al., ICCV 2021) sobre las 3 entradas de la cabeza Detect (P3, P4, P5).
-- Maestro: best.pt de la Fase 2, congelado, eval(), sin gradientes, con autocast; recibe el
+- Maestro: best.pt del maestro elegido (D2), congelado, eval(), sin gradientes, con autocast; recibe el
   MISMO batch aumentado que el alumno.
 - Adaptadores: conv 1×1 en el alumno para igualar canales con el maestro; se entrenan con el
   alumno y NO se exportan (verificar que no están en best.pt).
@@ -273,7 +277,8 @@ proyecto/
 - [x] Fase 0 — Entorno (2026-09-27, `results/env_check.json`)
 - [x] Fase 1 — Datos (2026-09-28, 4 clases, auditoría en `results/tables/data_audit.csv`)
 - [x] Fase 1b — Pruebas de tiempo (2026-09-28, AMP; ~41 h de GPU estimadas)
-- [x] Fase 2 — Maestro (2026-09-30; best.pt época 148, val mAP@0.5 0.344 / mAP@0.5:0.95 0.148)
+- [x] Fase 2 — Maestro YOLO11m (2026-09-30; best.pt época 148, val mAP@0.5 0.344 / mAP@0.5:0.95 0.148)
+- [ ] Fase 2b — Maestro YOLO11l (listo para lanzar: `bash scripts/train_teacher.sh --rol maestro_l`) y selección
 - [x] Fase 4a — Implementación CWD (2026-09-30, `src/train/cwd.py`; humo y verificación OK)
 - [x] Fase 3 — Alumnos base (2026-10-01; val mAP@0.5 0.3415 ± 0.0215; alerta: maestro apenas mejor)
 - [ ] Fase 4b — Piloto λ + alumnos KD

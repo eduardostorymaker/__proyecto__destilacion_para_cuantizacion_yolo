@@ -234,3 +234,15 @@
 - Costo estimado de cambiar a YOLO11l: maestro ≤ 11.9 h (300 ép.; ~8 h si para como el 11m en ~200),
   KD +2.3 h (3 × 300) y piloto +0.4 h → ~11–15 h de GPU adicionales.
 - Pendiente de decisión del usuario.
+
+## 2026-10-01 — Fase 2b: segundo maestro YOLO11l (preparación)
+
+- Decisión del usuario: entrenar también YOLO11l como maestro y conservar el YOLO11m (`runs/teacher/teacher_s0`).
+- `configs/train.yaml`: nuevo bloque `maestro_l` (yolo11l.pt, seed 0, patience 50, `teacher_l_s0`), misma config D2.
+  `src/train/train_teacher.py --rol maestro_l`.
+- Regla de selección fijada ANTES del resultado (`configs/kd.yaml`, seleccion_maestro): revalidar best.pt de
+  ambos en VALIDACIÓN (imgsz 640, batch 8, conf 0.001, iou 0.7); YOLO11l solo si su mAP@0.5:0.95 ≥ la del
+  YOLO11m (0.1471) + 0.010; si no, YOLO11m.
+- Prueba de humo `bash scripts/train_teacher.sh --rol maestro_l --humo` OK (args: yolo11l, batch 8, amp,
+  patience 50, cache disk).
+- Pendiente: entrenamiento completo (~8–12 h).
