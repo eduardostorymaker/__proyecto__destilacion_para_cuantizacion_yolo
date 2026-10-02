@@ -215,3 +215,22 @@
   D40 por ~4 puntos (0.437 vs 0.397); en mAP@0.5:0.95 la diferencia es de ~0.3 puntos. Pendiente de decisión
   del usuario antes del piloto de λ (Fase 4b).
 - **Resultado: Fase 3 completada** (corridas válidas; la alerta afecta a la Fase 4b, no a estas corridas).
+
+## 2026-10-01 — Exploración: maestro YOLO11l (sin cambio de diseño)
+
+- Motivo: el maestro YOLO11m apenas supera a los alumnos base (ver Fase 3).
+- `scripts/exploracion/explora_teacher_l.py`: YOLO11l (COCO) con la config D2 (amp, batch 8, cache disk),
+  3 épocas completas; salida en `runs/exploracion/teacher_l_3ep`, log `runs/logs/explora_teacher_l.log`.
+
+| | YOLO11m (Fase 1b) | YOLO11l (exploración) |
+|---|---|---|
+| Parámetros / GFLOPs | 20.0 M / 67.8 | 25.3 M / 86.8 |
+| s/época train + val (sin la 1.ª) | 111.8 + 11.6 = 123 s | 129.8 + 13.0 = 143 s |
+| VRAM máx. (batch 8, AMP) | 4.2 GB | 5.3 GB |
+| NaN en 3 épocas | no | no |
+| Forward maestro (eval, autocast, batch 8) | 52.7 ms → +36 s/época KD | 66.3 ms → +45 s/época KD |
+| Canales de entrada de Detect | 256/512/512 | 256/512/512 (mismos adaptadores) |
+
+- Costo estimado de cambiar a YOLO11l: maestro ≤ 11.9 h (300 ép.; ~8 h si para como el 11m en ~200),
+  KD +2.3 h (3 × 300) y piloto +0.4 h → ~11–15 h de GPU adicionales.
+- Pendiente de decisión del usuario.
