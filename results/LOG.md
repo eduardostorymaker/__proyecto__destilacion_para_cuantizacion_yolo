@@ -187,3 +187,31 @@
   - best.pt KD y base: 499 tensores con claves y formas idénticas; sin adaptadores ni maestro.
   - ONNX KD y base: 2 624 974 parámetros ambos.
 - **Resultado: Fase 4a completada.** Listo para Fase 3 (`--kd off --seed N`) y piloto de λ (`--kd on --piloto λ`).
+
+## 2026-10-01 — Fase 3: alumnos base (seeds 0, 1, 2)
+
+- `for s in 0 1 2; do bash scripts/train_student.sh --kd off --seed $s; done` → `runs/students/student_base_s{0,1,2}`.
+- 300 épocas cada uno (sin parada temprana), ~2.7 h por corrida, sin NaN.
+
+| Corrida | best (época) | val mAP@0.5 / 0.5:0.95 en best | last (300) mAP@0.5 / 0.5:0.95 | Pendiente últ. 50 ép. (mAP@0.5 / 0.5:0.95, por 50 ép.) |
+|---|---|---|---|---|
+| base_s0 | 202 | 0.3670 / 0.1514 | 0.3415 / 0.1384 | −0.0023 / −0.0027 |
+| base_s1 | 238 | 0.3332 / 0.1417 | 0.3321 / 0.1364 | −0.0006 / −0.0029 |
+| base_s2 | 114 | 0.3244 / 0.1403 | 0.3294 / 0.1363 | −0.0021 / −0.0000 |
+
+- Todos convergieron (mAP plana o bajando levemente en las últimas 50 épocas).
+- Revalidación en val de best.pt (batch 8, conf 0.001, iou 0.7), comparada con el maestro:
+
+| Modelo | mAP@0.5 | mAP@0.5:0.95 | D00 | D10 | D20 | D40 | mAP@0.5 sin D10 |
+|---|---|---|---|---|---|---|---|
+| Maestro YOLO11m | 0.3450 | 0.1471 | 0.3114 | 0.0342 | 0.5971 | 0.4372 | 0.4486 |
+| base_s0 | 0.3657 | 0.1510 | 0.3439 | 0.1492 | 0.5684 | 0.4012 | 0.4378 |
+| base_s1 | 0.3339 | 0.1417 | 0.3264 | 0.0342 | 0.5764 | 0.3985 | 0.4338 |
+| base_s2 | 0.3248 | 0.1408 | 0.2491 | 0.0972 | 0.5619 | 0.3910 | 0.4007 |
+| Alumnos base (media ± d.e.) | 0.3415 ± 0.0215 | 0.1445 ± 0.0057 | | | | 0.3969 ± 0.0053 | 0.4241 ± 0.0203 |
+
+- **Alerta:** el maestro apenas supera a los alumnos. En mAP@0.5 global (4 clases) base_s0 lo supera, por el AP
+  de D10 (9 instancias en val: 0.149 vs 0.034). Sin D10 el maestro gana por ~2.5 puntos (0.449 vs 0.424) y en
+  D40 por ~4 puntos (0.437 vs 0.397); en mAP@0.5:0.95 la diferencia es de ~0.3 puntos. Pendiente de decisión
+  del usuario antes del piloto de λ (Fase 4b).
+- **Resultado: Fase 3 completada** (corridas válidas; la alerta afecta a la Fase 4b, no a estas corridas).

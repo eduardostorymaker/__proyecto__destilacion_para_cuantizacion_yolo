@@ -275,7 +275,7 @@ proyecto/
 - [x] Fase 1b — Pruebas de tiempo (2026-09-28, AMP; ~41 h de GPU estimadas)
 - [x] Fase 2 — Maestro (2026-09-30; best.pt época 148, val mAP@0.5 0.344 / mAP@0.5:0.95 0.148)
 - [x] Fase 4a — Implementación CWD (2026-09-30, `src/train/cwd.py`; humo y verificación OK)
-- [ ] Fase 3 — Alumnos base
+- [x] Fase 3 — Alumnos base (2026-10-01; val mAP@0.5 0.3415 ± 0.0215; alerta: maestro apenas mejor)
 - [ ] Fase 4b — Piloto λ + alumnos KD
 - [ ] Fase 5 — PTQ
 - [ ] Fase 5b — QAT
