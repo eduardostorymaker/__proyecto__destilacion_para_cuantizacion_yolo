@@ -275,3 +275,50 @@
 - Conclusión: más capacidad (+26 % de parámetros) no mejora al maestro en RDD2022-India; refuerza que el
   techo lo pone el conjunto de datos, no el tamaño del modelo. Se documenta en Limitaciones.
 - **Resultado: Fase 2b completada.**
+
+## 2026-10-03 — Exploración: ¿la PTQ degrada a los alumnos base? (en VALIDACIÓN, no test)
+
+- `PYTHONPATH=. python scripts/exploracion/ptq_check.py` (config `configs/exploracion_ptq.yaml`); tabla
+  `results/tables/exploracion_ptq_val.csv`; engines en `runs/exploracion/ptq_check/` (corridas originales intactas).
+  Exportación según D4 (TensorRT 10.16, imgsz 640, batch 1, estático, simplify; INT8 con el exportador de
+  Ultralytics y `configs/calib.yaml`). Evaluación en val, batch 1, conf 0.001, iou 0.7.
+- Se usó validación a propósito: el split test queda reservado para la evaluación final (D6/D7).
+
+| Alumno | Variante | mAP@0.5 | mAP@0.5:0.95 | AP@0.5 D40 | mAP@0.5 sin D10 | P | R | MB |
+|---|---|---|---|---|---|---|---|---|
+| base_s0 | PyTorch FP32 (rect) | 0.3659 | 0.1511 | 0.4011 | 0.4381 | 0.491 | 0.353 | 5.3 |
+| base_s0 | PyTorch FP32 (cuadrado) | 0.3449 | 0.1414 | 0.3880 | 0.4218 | 0.381 | 0.389 | 5.3 |
+| base_s0 | TensorRT FP32 | 0.3449 | 0.1415 | 0.3879 | 0.4218 | 0.382 | 0.388 | 12.8 |
+| base_s0 | TensorRT FP16 | 0.3604 | 0.1439 | 0.3931 | 0.4232 | 0.383 | 0.391 | 7.4 |
+| base_s0 | TensorRT INT8 | 0.3061 | 0.1221 | 0.3533 | 0.3755 | 0.419 | 0.349 | 4.5 |
+| base_s1 | PyTorch FP32 (rect) | 0.3337 | 0.1416 | 0.3981 | 0.4336 | 0.410 | 0.356 | 5.3 |
+| base_s1 | PyTorch FP32 (cuadrado) | 0.3231 | 0.1315 | 0.4009 | 0.4226 | 0.399 | 0.347 | 5.3 |
+| base_s1 | TensorRT FP32 | 0.3232 | 0.1315 | 0.4008 | 0.4227 | 0.399 | 0.347 | 12.9 |
+| base_s1 | TensorRT FP16 | 0.3230 | 0.1315 | 0.4023 | 0.4225 | 0.393 | 0.350 | 7.4 |
+| base_s1 | TensorRT INT8 | 0.2928 | 0.1125 | 0.3532 | 0.3696 | 0.411 | 0.318 | 4.5 |
+| base_s2 | PyTorch FP32 (rect) | 0.3248 | 0.1407 | 0.3911 | 0.4007 | 0.359 | 0.396 | 5.3 |
+| base_s2 | PyTorch FP32 (cuadrado) | 0.3031 | 0.1263 | 0.3984 | 0.3793 | 0.296 | 0.357 | 5.3 |
+| base_s2 | TensorRT FP32 | 0.3032 | 0.1264 | 0.3987 | 0.3794 | 0.281 | 0.350 | 12.9 |
+| base_s2 | TensorRT FP16 | 0.3028 | 0.1261 | 0.3979 | 0.3790 | 0.297 | 0.358 | 7.6 |
+| base_s2 | TensorRT INT8 | 0.2795 | 0.1163 | 0.3509 | 0.3448 | 0.534 | 0.301 | 4.5 |
+
+- Pérdida respecto de TensorRT FP32 (Δ = FP32 − cuantizado; media ± d.e. de 3 semillas):
+
+| Métrica | FP16 | INT8 | INT8 relativo |
+|---|---|---|---|
+| mAP@0.5 | −0.0050 ± 0.0091 | **+0.0310 ± 0.0076** | −9.5 % |
+| mAP@0.5:0.95 | −0.0007 ± 0.0015 | **+0.0162 ± 0.0052** | −12.1 % |
+| AP@0.5 D40 | −0.0020 ± 0.0030 | **+0.0433 ± 0.0076** | −10.9 % |
+| mAP@0.5 sin D10 | −0.0003 ± 0.0010 | **+0.0447 ± 0.0094** | −10.9 % |
+| Recall | −0.0040 ± 0.0029 | +0.0394 ± 0.0099 | −10.9 % |
+
+- **Conclusión: la PTQ INT8 degrada a los 3 alumnos base de forma consistente (3/3 semillas, todas las
+  métricas): ~3 puntos de mAP@0.5 (−9.5 %) y ~4.3 puntos en D40.** FP16 no pierde precisión (|Δ| ≤ 0.002 sin
+  D10; el +1.5 de FP16 en base_s0 viene de D10, 9 instancias). El fundamento de P1 se confirma.
+- INT8 sube la precisión y baja el recall (base_s2: P 0.28 → 0.53): la cuantización desplaza las confianzas,
+  lo que apunta a efectos en la calibración (P2, ECE).
+- **Hallazgo metodológico:** PyTorch FP32 con la validación por defecto de Ultralytics (rect=True, letterbox
+  rectangular) da 1–2 puntos más de mAP@0.5 que con letterbox cuadrado; PyTorch con rect=False reproduce
+  TensorRT FP32 (|Δ| ≤ 0.0001). Un engine estático de 640×640 siempre usa letterbox cuadrado. Para que ΔmAP
+  mida solo la cuantización, la referencia FP32 debe evaluarse con el mismo preprocesado (rect=False o el
+  engine TensorRT FP32). Pendiente de decisión del usuario para D6.
