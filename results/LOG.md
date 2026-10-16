@@ -322,3 +322,14 @@
   TensorRT FP32 (|Δ| ≤ 0.0001). Un engine estático de 640×640 siempre usa letterbox cuadrado. Para que ΔmAP
   mida solo la cuantización, la referencia FP32 debe evaluarse con el mismo preprocesado (rect=False o el
   engine TensorRT FP32). Pendiente de decisión del usuario para D6.
+
+## 2026-10-15 — Fase 4b (parte 1): piloto de λ preparado
+
+- `scripts/pilot_lambda.sh`: entrena `pilot_kd_l{λ}_s0` para λ ∈ {0.5, 1.0, 2.0} (seed 0, 50 épocas, config D2,
+  maestro YOLO11m) en `runs/pilot/` y luego corre `python -m src.train.select_lambda`.
+- Regla fijada antes de ver resultados (`configs/kd.yaml`, piloto): se elige el λ con mayor mAP@0.5:0.95 de
+  best.pt revalidado en VALIDACIÓN (imgsz 640, batch 8, conf 0.001, iou 0.7). `select_lambda` también reporta
+  por λ: L_CWD de la época 1 a la última, si baja, el peso de λ·L_CWD sobre L_det y NaN. No modifica kd.yaml.
+- Prueba de humo del flujo completo (`--piloto λ --humo`, 2 épocas, 5 % de train, + `select_lambda --humo`) OK.
+  L_CWD baja con los 3 λ (≈1.48 → 1.43–1.45); peso de λ·L_CWD sobre L_det: 5 % (λ=0.5), 10 % (λ=1), 20 % (λ=2).
+- Pendiente: piloto completo (~3 h).

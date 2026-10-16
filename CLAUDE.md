@@ -281,7 +281,7 @@ proyecto/
 - [x] Fase 2b — Maestro YOLO11l (2026-10-02; val mAP@0.5:0.95 0.1444 < 0.1571) → regla: se usa YOLO11m
 - [x] Fase 4a — Implementación CWD (2026-09-30, `src/train/cwd.py`; humo y verificación OK)
 - [x] Fase 3 — Alumnos base (2026-10-01; val mAP@0.5 0.3415 ± 0.0215; alerta: maestro apenas mejor)
-- [ ] Fase 4b — Piloto λ + alumnos KD
+- [ ] Fase 4b — Piloto λ (listo: `bash scripts/pilot_lambda.sh`) + alumnos KD
 - [ ] Fase 5 — PTQ
 - [ ] Fase 5b — QAT
 - [ ] Fase 6 — Evaluación

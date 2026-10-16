@@ -28,7 +28,12 @@ piloto:
   seed: 0
   epocas: 50
   project: runs/pilot
-  # name = pilot_kd_l{λ}_s0 ; elección por mAP@0.5:0.95 de VALIDACIÓN (nunca test)
+  # name = pilot_kd_l{λ}_s0
+  # Regla (fijada antes de ver resultados): se elige el λ cuyo best.pt tenga la mayor mAP@0.5:0.95 en
+  # VALIDACIÓN (nunca test), revalidando todos con el mismo procedimiento que la selección de maestro.
+  revalidacion: {split: val, imgsz: 640, batch: 8, conf: 0.001, iou: 0.7}
+  tabla: results/tables/pilot_lambda.csv
+  figura: results/figures/pilot_lambda.png
 
 humo:
   lambda: 1.0
