@@ -333,3 +333,23 @@
 - Prueba de humo del flujo completo (`--piloto λ --humo`, 2 épocas, 5 % de train, + `select_lambda --humo`) OK.
   L_CWD baja con los 3 λ (≈1.48 → 1.43–1.45); peso de λ·L_CWD sobre L_det: 5 % (λ=0.5), 10 % (λ=1), 20 % (λ=2).
 - Pendiente: piloto completo (~3 h).
+
+## 2026-10-16 — Fase 4b (parte 1): piloto de λ completado
+
+- `bash scripts/pilot_lambda.sh` → `runs/pilot/pilot_kd_l{0.5,1.0,2.0}_s0` (50 épocas, ~63 min cada uno;
+  terminó 02:57). Un reinicio del PC a las 03:58 no afectó las corridas. Selección:
+  `runs/logs/pilot_lambda_seleccion_20261016_025713.log`, `results/tables/pilot_lambda.csv`,
+  `results/figures/pilot_lambda.png`.
+
+| λ | L_CWD época 1 → 50 | ¿Baja? | λ·L_CWD / L_det (final) | NaN | val mAP@0.5 | **val mAP@0.5:0.95** | AP@0.5 D40 | mAP@0.5 sin D10 |
+|---|---|---|---|---|---|---|---|---|
+| 0.5 | 1.456 → 0.467 | sí | 4.3 % | no | 0.3121 | 0.1341 | 0.3248 | 0.3726 |
+| **1.0** | 1.421 → 0.409 | sí | 7.6 % | no | **0.3279** | **0.1437** | **0.3747** | 0.3969 |
+| 2.0 | 1.366 → 0.363 | sí | 13.8 % | no | 0.3027 | 0.1302 | 0.3744 | 0.3991 |
+
+- L_CWD baja con los 3 λ (−68 % a −73 %); el pequeño salto en la época 41 coincide con el cierre del mosaico
+  (close_mosaic=10), esperado. Escala razonable: λ·L_CWD = 4–14 % de L_det.
+- Según la regla fijada (mayor mAP@0.5:0.95 de validación): **λ = 1.0** (0.1437; +0.010 sobre λ=0.5,
+  +0.014 sobre λ=2.0). λ=1.0 es el valor central de la rejilla (no está en un extremo).
+- Advertencia: una sola semilla y 50 épocas; la mAP seguía subiendo en la época 50 para los 3 λ.
+- Pendiente: confirmación del usuario para fijar `lambda: 1.0` en `configs/kd.yaml`.
