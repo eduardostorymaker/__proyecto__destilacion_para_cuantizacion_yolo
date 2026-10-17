@@ -454,3 +454,32 @@
   640×640 (`rect=False`) y batch 1. ΔmAP dentro del mismo motor: GPU = TRT FP32 − TRT {FP16, INT8, QAT INT8};
   CPU = OV FP32 − OV INT8. El .pt FP32 (rect=False) es control de consistencia frente a TRT FP32
   (|Δ mAP@0.5| < 0.002; en la exploración fue ≤ 0.0001). ECE y bootstrap usan esas mismas predicciones.
+
+## 2026-10-17 — Fase 5: PTQ implementada; primer modelo exportado
+
+- `src/quant/export_all.py` (config `configs/quant.yaml`, lanzador `scripts/export_all.sh`): para cada modelo,
+  TensorRT FP32/FP16/INT8 y OpenVINO FP32/INT8 (maestro: solo TensorRT; incluye FP32 porque ΔmAP se calcula
+  dentro del mismo motor, D6). Cada precisión se exporta por separado desde best.pt; imgsz 640, batch 1,
+  estático, simplify. Salida `runs/exports/{modelo}_{formato}_{precision}/`; tabla `results/tables/exports.csv`.
+- Verificación de calibración: antes de exportar se comprueba que `calib.yaml` (train y val) apunta a las 500
+  imágenes de `data/splits/calib.txt`, contenidas en train y sin intersección con val/test; en cada INT8 se
+  guarda el mensaje de Ultralytics "collecting INT8 calibration images from 'data=.../configs/calib.yaml'"
+  (columna `calibracion` de exports.csv) y la exportación falla si no aparece.
+- Inspector de engines (`src/quant/engine_layers.py`): precisión de cada capa según el tipo de dato de su
+  salida → `results/tables/engine_layers.csv`.
+- Prueba con `student_base_s0` (`bash scripts/export_all.sh --modelos student_base_s0`), todo OK:
+
+| Exportación | Tamaño | Tiempo |
+|---|---|---|
+| TensorRT FP32 | 12.8 MB | 86 s |
+| TensorRT FP16 | 7.6 MB | 219 s |
+| TensorRT INT8 | 4.5 MB | 353 s |
+| OpenVINO FP32 | 10.2 MB | 2 s |
+| OpenVINO INT8 | 3.2 MB | 28 s |
+
+- Engine INT8 de student_base_s0: 198 capas (122 de cómputo, sin contar Reformat). Capas de cómputo:
+  **68.0 % INT8, 15.6 % FP16, 16.4 % FP32**. Convoluciones (88): pesos INT8 en 79, FP16 en 8, FP32 en 1.
+  Quedan en FP32, entre otras, el bloque de atención C2PSA (`model.10/.../attn`), algunas convoluciones de
+  C3k2 (`model.8`, `model.22`) y la sigmoide final de la cabeza (`model.23`, forzada por Ultralytics).
+  El INT8 de TensorRT es mixto, como se esperaba (D4).
+- Pendiente: exportar los 6 modelos restantes (~75 min estimados).

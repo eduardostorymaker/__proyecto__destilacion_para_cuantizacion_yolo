@@ -291,7 +291,7 @@ proyecto/
 - [x] Fase 4a — Implementación CWD (2026-09-30, `src/train/cwd.py`; humo y verificación OK)
 - [x] Fase 3 — Alumnos base (2026-10-01; val mAP@0.5 0.3415 ± 0.0215; alerta: maestro apenas mejor)
 - [x] Fase 4b — Piloto λ (λ = 1.0) + alumnos KD (2026-10-17; val mAP@0.5 0.3467 ± 0.0079; check_kd OK)
-- [ ] Fase 5 — PTQ
+- [ ] Fase 5 — PTQ (implementada; student_base_s0 exportado; resto: `bash scripts/export_all.sh`)
 - [ ] Fase 5b — QAT
 - [ ] Fase 6 — Evaluación
 - [ ] Fase 7 — Estadística

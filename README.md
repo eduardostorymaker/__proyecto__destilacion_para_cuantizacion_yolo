@@ -49,7 +49,7 @@ entrenamiento.
 | 3 | Alumnos base (3 semillas) | ✅ |
 | 4a | Implementación de CWD | ✅ |
 | 4b | Piloto de λ (λ = 1.0) y alumnos KD (3 semillas) | ✅ |
-| 5 | Cuantización PTQ (TensorRT y OpenVINO) | pendiente |
+| 5 | Cuantización PTQ (TensorRT y OpenVINO) | ⏳ implementada, exportando |
 | 5b | QAT con NVIDIA ModelOpt | pendiente |
 | 6 | Evaluación en test (mAP, ECE) | pendiente |
 | 7 | Estadística (bootstrap, Holm) | pendiente |

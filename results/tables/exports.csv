@@ -1,0 +1,6 @@
+modelo,formato,precision,ruta,MB,segundos,calibracion
+student_base_s0,tensorrt,fp32,runs/exports/student_base_s0_tensorrt_fp32/best.engine,12.75,86.4,
+student_base_s0,tensorrt,fp16,runs/exports/student_base_s0_tensorrt_fp16/best.engine,7.57,218.8,
+student_base_s0,tensorrt,int8,runs/exports/student_base_s0_tensorrt_int8/best.engine,4.53,353.0,[34m[1mTensorRT:[0m collecting INT8 calibration images from 'data=/mnt/d/1-Personal/5-Studies/MaestriaIA/S2/Vision de computadora/proyecto_yolo/Codigo/configs/calib.yaml'
+student_base_s0,openvino,fp32,runs/exports/student_base_s0_openvino_fp32/best_openvino_model,10.24,1.9,
+student_base_s0,openvino,int8,runs/exports/student_base_s0_openvino_int8/best_int8_openvino_model,3.23,28.0,[34m[1mOpenVINO:[0m collecting INT8 calibration images from 'data=/mnt/d/1-Personal/5-Studies/MaestriaIA/S2/Vision de computadora/proyecto_yolo/Codigo/configs/calib.yaml'
