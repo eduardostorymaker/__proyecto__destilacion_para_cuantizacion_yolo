@@ -1,26 +1,49 @@
-# Datos (pesados, se regeneran con src/data/)
+# ---------------------------------------------------------------------------
+# Datos (pesados y con licencia propia; se regeneran con src/data/)
+# Las listas de partición en data/splits/ SÍ se versionan (reproducibilidad).
+# ---------------------------------------------------------------------------
 data/raw/
 data/yolo/
-# Las listas de partición SÍ se versionan (reproducibilidad)
-!data/splits/
+*.zip
 
-# Corridas, pesos y exportaciones
+# ---------------------------------------------------------------------------
+# Corridas, pesos y exportaciones de modelos
+# ---------------------------------------------------------------------------
 runs/
+# Pesos que descarga Ultralytics en la raíz (p. ej. el chequeo de AMP)
+weights/
 *.pt
+*.pth
 *.engine
 *.onnx
+*.torchscript
+*_openvino_model/
 *.cache
+# Cachés de imágenes de Ultralytics (cache=disk); las distribuciones bootstrap de la Fase 7 SÍ se versionan
+*.npy
+!results/bootstrap/*.npy
 
-# Python
+# ---------------------------------------------------------------------------
+# Python y entorno
+# ---------------------------------------------------------------------------
 __pycache__/
 *.pyc
 .venv/
 .ipynb_checkpoints/
+.env
+.env.*
 
+# ---------------------------------------------------------------------------
 # Office temporales
+# ---------------------------------------------------------------------------
 ~$*
 
+# ---------------------------------------------------------------------------
 # SO / editor
+# ---------------------------------------------------------------------------
 .DS_Store
 Thumbs.db
+desktop.ini
 .vscode/
+.idea/
+*.swp
