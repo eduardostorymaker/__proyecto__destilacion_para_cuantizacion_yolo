@@ -134,7 +134,7 @@ Codigo/
 ├── scripts/                  lanzadores .sh, verificación del entorno y exploraciones
 ├── runs/                     corridas, pesos y exportaciones (no versionado)
 ├── results/                  LOG.md, tablas, figuras y métricas
-└── paper/                    borrador del paper
+└── paper/                    borrador del paper (no versionado)
 ```
 
 Convención de nombres de corridas: `{rol}_{kd|base}_s{semilla}`, por ejemplo `student_kd_s1`.
