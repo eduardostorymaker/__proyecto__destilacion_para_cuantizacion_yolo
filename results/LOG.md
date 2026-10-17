@@ -363,3 +363,36 @@
   la época 2, adaptadores restaurados, termina OK. Una corrida reanudada no es idéntica bit a bit a una sin cortes
   (estado aleatorio del cargador de datos): si se usa en una corrida final, se anota aquí.
 - Pendiente: `for s in 0 1 2; do bash scripts/train_student.sh --kd on --seed $s; done` (~17 h).
+
+## 2026-10-17 — Repositorio preparado para publicación (GitHub público)
+
+- `.gitignore` ampliado (pesos, exportaciones, cachés `.npy`, `.zip`, `.env`, editores) y `paper/` excluida
+  (borrador no publicado).
+- Historial reescrito con `git filter-branch` para eliminar `paper/` de todos los commits (copia de seguridad
+  previa del `.git` fuera del repositorio). Verificado: 0 commits con `paper/`, 0 objetos `.docx`.
+- Los identificadores de commit cambiaron. Los `entorno.json` de `runs/` guardan los antiguos; equivalencias:
+
+| Commit antiguo | Commit nuevo | Mensaje |
+|---|---|---|
+| 6a788e7 | 8467def | Fase 0: estructura del proyecto, requirements y verificación de entorno |
+| c218c81 | 4537746 | Fase 0 completada: entorno WSL2 + Python 3.13 verificado, lock de dependencias |
+| b5c294c | b98dbf8 | Fase 1: preparación de datos RDD2022-India (YOLO, partición estratificada, calibración) |
+| ed4f531 | b74a81e | Fase 1: excluir D10 (68 instancias) y regenerar datos con 3 clases |
+| f7a0af0 | 2e4a9ef | Fase 2: script de entrenamiento del maestro YOLO11m y configs/train.yaml |
+| 62de3a8 | 334f2cf | Diseño v3 en CLAUDE.md y Fase 1 rehecha: 4 clases, reglas D1, auditoría, estratificación iterativa |
+| 126aec7 | c041af4 | Diseño: calibrador de Ultralytics, cache disk, D7 preespecificada; Fase 1 aprobada |
+| 42b1813 | 4d8fc25 | Fase 1b: pruebas de tiempo (AMP vs FP32, alumno, forward del maestro) y estimación total |
+| 8032b58 | 7ea415c | Fase 2: maestro listo (humo con config D2), corrida v2 archivada |
+| 464b6ed | 2c9902b | Fase 2 (resultados) y Fase 4a: CWD propia, script de alumnos, verificación de humo |
+| 4da7577 | 9d26c23 | LOG: mAP exacta sin D10 y análisis de convergencia del maestro |
+| f4a1a78 | ab950e0 | Fase 3: alumnos base s0-s2 entrenados; alerta maestro vs alumnos |
+| cd99f24 | c4a8f9d | Exploración: maestro YOLO11l (3 épocas, tiempos, VRAM, costo KD) |
+| 9af54ed | e288c9d | Fase 2b: segundo maestro YOLO11l (config, --rol, regla de selección, humo OK) |
+| f872c72 | 22dac85 | Fase 2b: YOLO11l entrenado; regla de selección → se usa YOLO11m |
+| b8a0c4e | 809e374 | Exploración PTQ en val: INT8 degrada ~3 pts mAP50 (3/3 semillas); rect vs cuadrado |
+| 1fd858d | 85380f7 | Fase 4b: piloto de λ (script, regla de selección, select_lambda) y humo del flujo |
+| 52d1514 | 924e15a | Fase 4b: piloto de λ completado (propuesta λ=1.0) |
+| 0162042 | d3bddc6 | Fase 4b: λ=1.0 en kd.yaml; --reanudar con restauración de adaptadores |
+| eab2e7c | 9922569 | README: guía del proyecto, fases, scripts y resultados |
+| 30d0e57 | f018aa4 | gitignore: pesos, exportaciones, cachés .npy, zip, .env y editores |
+| 35ac428 | 747b716 | Excluir paper/ del repositorio (borrador no publicado) |
