@@ -311,3 +311,42 @@ la cuantización, la referencia FP32 debe evaluarse con el mismo preprocesado qu
   plan estadístico (D7) quedaron escritos antes de tener los datos correspondientes.
 - **Bitácora:** cada fase deja en [results/LOG.md](results/LOG.md) la fecha, el comando, el resultado
   principal y las decisiones tomadas.
+
+---
+
+## 8. Licencia
+
+El código de este repositorio se distribuye bajo la **GNU Affero General Public License v3.0
+(AGPL-3.0)**; el texto completo está en [LICENSE](LICENSE).
+
+Se eligió AGPL-3.0 porque el proyecto se construye sobre
+[Ultralytics](https://github.com/ultralytics/ultralytics), que usa esa misma licencia (por ejemplo,
+`src/train/cwd.py` extiende su `DetectionTrainer`). En la práctica:
+
+- Cualquiera puede usar, estudiar, modificar y ejecutar este código, también para reproducir los
+  experimentos del paper.
+- Quien distribuya una versión modificada, o la ofrezca como servicio en red, debe publicar su código
+  fuente bajo AGPL-3.0.
+
+El repositorio **no incluye** las imágenes ni las anotaciones de RDD2022 (solo las listas de nombres de
+archivo en `data/splits/`). El conjunto de datos se obtiene de su fuente original y está sujeto a su
+propia licencia.
+
+## 9. Créditos y referencias
+
+Si usas este código, cita el paper asociado (referencia por publicar) y las obras en las que se apoya:
+
+- **Conjunto de datos RDD2022.** D. Arya, H. Maeda, S. K. Ghosh, D. Toshniwal y Y. Sekimoto,
+  "RDD2022: A multi-national image dataset for automatic road damage detection", arXiv:2209.08538, 2022.
+  <https://github.com/sekilab/RoadDamageDetector>
+- **Ultralytics YOLO11** (AGPL-3.0). G. Jocher y J. Qiu, *Ultralytics YOLO11*, 2024.
+  <https://github.com/ultralytics/ultralytics>
+- **Channel-Wise Distillation (CWD).** C. Shu, Y. Liu, J. Gao, Z. Yan y C. Shen, "Channel-wise knowledge
+  distillation for dense prediction", en *Proc. IEEE/CVF ICCV*, 2021.
+- **MMRazor** (Apache-2.0), de OpenMMLab: implementación de referencia de CWD adaptada en
+  `src/train/cwd.py` (commit `0919f692878fe0037ff94bc90e46eed721c64a39`).
+  <https://github.com/open-mmlab/mmrazor>
+- **Estratificación iterativa multietiqueta.** K. Sechidis, G. Tsoumakas e I. Vlahavas, "On the
+  stratification of multi-label data", en *ECML PKDD*, 2011; implementación
+  [iterative-stratification](https://github.com/trent-b/iterative-stratification).
+- **Bootstrap.** B. Efron y R. J. Tibshirani, *An Introduction to the Bootstrap*, Chapman & Hall, 1993.
