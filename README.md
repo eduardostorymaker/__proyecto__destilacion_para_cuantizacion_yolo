@@ -48,7 +48,7 @@ entrenamiento.
 | 2b | Segundo maestro candidato YOLO11l y selección | ✅ (se usa el 11m) |
 | 3 | Alumnos base (3 semillas) | ✅ |
 | 4a | Implementación de CWD | ✅ |
-| 4b | Piloto de λ (✅, λ = 1.0) y alumnos KD (3 semillas) | ⏳ entrenando |
+| 4b | Piloto de λ (λ = 1.0) y alumnos KD (3 semillas) | ✅ |
 | 5 | Cuantización PTQ (TensorRT y OpenVINO) | pendiente |
 | 5b | QAT con NVIDIA ModelOpt | pendiente |
 | 6 | Evaluación en test (mAP, ECE) | pendiente |
@@ -256,7 +256,7 @@ bash scripts/pilot_lambda.sh           # entrena los 3 λ y corre src/train/sele
 
 **λ = 1.0** queda en `configs/kd.yaml`. Gráfica: `results/figures/pilot_lambda.png`.
 
-**Alumnos KD finales (en curso):**
+**Alumnos KD finales:**
 
 ```bash
 for s in 0 1 2; do bash scripts/train_student.sh --kd on --seed $s; done
@@ -267,6 +267,10 @@ bash scripts/train_student.sh --kd on --seed N --reanudar
 `--reanudar` retoma desde `weights/last.pt` y restaura los adaptadores, que se guardan aparte en
 `weights/kd_adaptadores_last.pt`. Una corrida reanudada no queda idéntica bit a bit a una sin cortes; si
 se usa, se anota en el LOG.
+
+Resultado en validación (media ± d.e. de 3 semillas): mAP@0.5 = 0.347 ± 0.008 y mAP@0.5:0.95 =
+0.147 ± 0.001, frente a 0.342 ± 0.022 y 0.145 ± 0.006 de los alumnos base. `check_kd` confirmó en las 3
+semillas que los best.pt KD no contienen adaptadores.
 
 ### Fases 5 a 9 — Pendientes
 

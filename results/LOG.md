@@ -396,3 +396,35 @@
 | eab2e7c | 9922569 | README: guía del proyecto, fases, scripts y resultados |
 | 30d0e57 | f018aa4 | gitignore: pesos, exportaciones, cachés .npy, zip, .env y editores |
 | 35ac428 | 747b716 | Excluir paper/ del repositorio (borrador no publicado) |
+
+## 2026-10-17 — Fase 4b (parte 2): alumnos KD entrenados (λ = 1.0)
+
+- `for s in 0 1 2; do bash scripts/train_student.sh --kd on --seed $s; done` → `runs/students/student_kd_s{0,1,2}`.
+  300 épocas cada uno, 6.2–6.4 h por corrida (estimado: 5.7 h), sin NaN, **sin reanudaciones** (`resume: false`).
+- best.pt: épocas 157 (s0), 274 (s1), 113 (s2). mAP de val plana o bajando levemente en las últimas 50 épocas.
+- L_CWD: 1.42 → 0.41 (época 50) → 0.38 (época 300) en las 3 semillas; al final λ·L_CWD ≈ 11.4 % de L_det.
+  En las últimas 100 épocas L_CWD sube levemente (+0.015 por 100 épocas), en parte por el cierre del mosaico
+  en la época 291 (mismo salto visto en el piloto).
+- `python -m src.train.check_kd` para cada semilla (KD vs. base de la misma semilla): **TODO OK** en las 3.
+  best.pt KD con 499 tensores idénticos al base (sin adaptadores ni maestro); ONNX de 2 624 974 parámetros en ambos.
+- Revalidación en VALIDACIÓN (imgsz 640, batch 8, conf 0.001, iou 0.7):
+
+| Modelo | mAP@0.5 | mAP@0.5:0.95 | D00 | D10 | D20 | D40 | mAP@0.5 sin D10 | mAP@0.5:0.95 sin D10 |
+|---|---|---|---|---|---|---|---|---|
+| Maestro YOLO11m | 0.3450 | 0.1471 | 0.3114 | 0.0342 | 0.5971 | 0.4372 | 0.4486 | 0.1921 |
+| kd_s0 | 0.3378 | 0.1478 | 0.3012 | 0.0671 | 0.5863 | 0.3966 | 0.4280 | 0.1859 |
+| kd_s1 | 0.3493 | 0.1458 | 0.3378 | 0.0445 | 0.5868 | 0.4282 | 0.4509 | 0.1857 |
+| kd_s2 | 0.3529 | 0.1465 | 0.3096 | 0.1142 | 0.5802 | 0.4077 | 0.4325 | 0.1851 |
+
+| Métrica (val, media ± d.e.) | Alumnos base | Alumnos KD | KD − base | KD − base por semilla (s0, s1, s2) |
+|---|---|---|---|---|
+| mAP@0.5 | 0.3415 ± 0.0215 | 0.3467 ± 0.0079 | +0.0052 | −0.028, +0.015, +0.028 |
+| mAP@0.5:0.95 | 0.1445 ± 0.0056 | 0.1467 ± 0.0010 | +0.0022 | −0.003, +0.004, +0.006 |
+| AP@0.5 D40 | 0.3969 ± 0.0053 | 0.4108 ± 0.0160 | +0.0139 | −0.005, +0.030, +0.017 |
+| mAP@0.5 sin D10 | 0.4241 ± 0.0204 | 0.4371 ± 0.0121 | +0.0130 | −0.010, +0.017, +0.032 |
+| mAP@0.5:0.95 sin D10 | 0.1805 ± 0.0081 | 0.1856 ± 0.0004 | +0.0051 | −0.001, +0.002, +0.014 |
+
+- Lectura (descriptiva, en val; no es un contraste del paper): la KD mejora levemente al alumno en FP32 (2/3
+  semillas; s0 empeora en mAP@0.5 por D10) y, sobre todo, **reduce la variabilidad entre semillas** (d.e. de
+  mAP@0.5:0.95 0.0010 vs 0.0056). Los alumnos KD alcanzan al maestro en mAP@0.5:0.95 (0.1467 vs 0.1471).
+- **Resultado: Fase 4b completada.**
