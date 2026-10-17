@@ -428,3 +428,29 @@
   semillas; s0 empeora en mAP@0.5 por D10) y, sobre todo, **reduce la variabilidad entre semillas** (d.e. de
   mAP@0.5:0.95 0.0010 vs 0.0056). Los alumnos KD alcanzan al maestro en mAP@0.5:0.95 (0.1467 vs 0.1471).
 - **Resultado: Fase 4b completada.**
+
+## 2026-10-17 — Decisión D6 (preprocesado) y complementos de la exploración PTQ
+
+- **Confirmación: la exploración PTQ (2026-10-03) usó solo VALIDACIÓN, nunca test.** Evidencia:
+  `configs/exploracion_ptq.yaml` (`split: val`); en `runs/logs/exploracion_ptq_check*.log` hay 11 lecturas de
+  `labels/val` (evaluaciones), 6 de `labels/train` (cargadores de calibración INT8 sobre `calib.txt`, imágenes
+  de train) y 0 menciones de `test`.
+- Precisión y recall de esa exploración (punto de máximo F1 de Ultralytics; Δ = FP32 − cuantizado, TensorRT):
+
+| Alumno | P FP32 | P FP16 | P INT8 | R FP32 | R FP16 | R INT8 |
+|---|---|---|---|---|---|---|
+| base_s0 | 0.382 | 0.383 | 0.419 | 0.388 | 0.391 | 0.349 |
+| base_s1 | 0.399 | 0.393 | 0.411 | 0.347 | 0.350 | 0.318 |
+| base_s2 | 0.281 | 0.297 | 0.534 | 0.350 | 0.358 | 0.301 |
+
+| Δ (FP32 − cuantizado), media ± d.e. | FP16 | INT8 |
+|---|---|---|
+| Precisión | −0.004 ± 0.011 | −0.101 ± 0.133 (sube en 3/3 semillas) |
+| Recall | −0.004 ± 0.003 | +0.039 ± 0.010 (baja en 3/3 semillas, −10.9 %) |
+
+  INT8 vuelve al modelo más conservador (más precisión, menos recall). La precisión es inestable porque es un
+  solo punto de operación (umbral de máximo F1 promediado sobre clases, sensible a D10).
+- **Decisión del usuario (D6):** todos los modelos, incluido el .pt FP32, se evalúan con letterbox cuadrado
+  640×640 (`rect=False`) y batch 1. ΔmAP dentro del mismo motor: GPU = TRT FP32 − TRT {FP16, INT8, QAT INT8};
+  CPU = OV FP32 − OV INT8. El .pt FP32 (rect=False) es control de consistencia frente a TRT FP32
+  (|Δ mAP@0.5| < 0.002; en la exploración fue ≤ 0.0001). ECE y bootstrap usan esas mismas predicciones.

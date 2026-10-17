@@ -56,6 +56,23 @@ entrenamiento.
 | 8 | Eficiencia (latencia, FPS, tamaño) | pendiente |
 | 9 | Tablas y figuras del paper | pendiente |
 
+### Resultados hasta ahora (validación)
+
+Todos se obtuvieron en el split de **validación**; el split test no se ha usado y queda reservado para la
+Fase 6. Métricas de best.pt revalidado con imgsz 640, batch 8, conf 0.001 e iou 0.7 (media ± d.e. de 3
+semillas para los alumnos):
+
+| Modelo | mAP@0.5 | mAP@0.5:0.95 | AP@0.5 D40 | mAP@0.5 sin D10 |
+|---|---|---|---|---|
+| Maestro YOLO11m | 0.345 | 0.147 | 0.437 | 0.449 |
+| Alumnos base YOLO11n | 0.342 ± 0.022 | 0.145 ± 0.006 | 0.397 ± 0.005 | 0.424 ± 0.020 |
+| Alumnos KD YOLO11n (λ = 1.0) | 0.347 ± 0.008 | 0.147 ± 0.001 | 0.411 ± 0.016 | 0.437 ± 0.012 |
+
+- La KD mejora levemente al alumno en FP32 (sobre todo en D40) y reduce mucho la variabilidad entre
+  semillas (d.e. de mAP@0.5:0.95: 0.001 frente a 0.006).
+- La PTQ INT8 degrada a los alumnos base en 3/3 semillas: −3.1 puntos de mAP@0.5 (−9.5 %) y −4.3 en D40,
+  con más precisión y menos recall (−10.9 %). FP16 no pierde precisión (exploración `ptq_check`).
+
 ---
 
 ## 3. Entorno
@@ -278,7 +295,7 @@ semillas que los best.pt KD no contienen adaptadores.
 |---|---|---|
 | 5 — PTQ | Exportar los 6 alumnos (y el maestro como referencia) a TensorRT FP32/FP16/INT8 y OpenVINO FP32/INT8; registrar qué capas quedan en INT8, FP16 o FP32 | `configs/calib.yaml` |
 | 5b — QAT | Cuantización durante el entrenamiento con NVIDIA ModelOpt: calibrar, evaluar sin ajuste (control) y ajustar 30 épocas | `configs/qat.yaml` (por crear) |
-| 6 — Evaluación | Todos los modelos en el split **test**: mAP, AP por clase, precisión, recall y ECE | — |
+| 6 — Evaluación | Todos los modelos en el split **test** con letterbox cuadrado (`rect=False`), batch 1: mAP, AP por clase, precisión, recall y ECE; ΔmAP dentro del mismo motor | — |
 | 7 — Estadística | Bootstrap pareado (1 000 remuestreos), contrastes H1a–H3 con corrección de Holm | — |
 | 8 — Eficiencia | Latencia, FPS y tamaño en GPU (TensorRT) y CPU (OpenVINO) | — |
 | 9 — Reporte | Tablas III–V y figuras del paper | — |
@@ -293,14 +310,18 @@ El plan estadístico (hipótesis, α, δ y número de remuestreos) está fijado 
 | Script | Pregunta | Resultado |
 |---|---|---|
 | `scripts/exploracion/explora_teacher_l.py` | ¿Cabe y cuánto cuesta un maestro YOLO11l? | 143 s/época y 5.3 GB; motivó la Fase 2b |
-| `scripts/exploracion/ptq_check.py` | ¿La PTQ INT8 degrada a los alumnos base? (en **validación**, para no ver el test) | Sí, en 3/3 semillas: −3.1 puntos de mAP@0.5 (−9.5 %) y −4.3 en D40; FP16 no pierde nada |
+| `scripts/exploracion/ptq_check.py` | ¿La PTQ INT8 degrada a los alumnos base? (en **validación**, para no ver el test) | Sí, en 3/3 semillas: −3.1 puntos de mAP@0.5 (−9.5 %), −4.3 en D40 y −3.9 de recall; la precisión sube (modelo más conservador). FP16 no pierde nada |
 
 Uso: `PYTHONPATH=. python scripts/exploracion/<script>.py`.
 
 **Hallazgo metodológico de `ptq_check`:** evaluar el best.pt de PyTorch con la validación por defecto de
 Ultralytics (letterbox rectangular) da 1–2 puntos más de mAP que un engine TensorRT con entrada fija de
-640×640. Con letterbox cuadrado (`rect=False`), PyTorch y TensorRT FP32 coinciden. Para que ΔmAP mida solo
-la cuantización, la referencia FP32 debe evaluarse con el mismo preprocesado que los modelos cuantizados.
+640×640. Con letterbox cuadrado (`rect=False`), PyTorch y TensorRT FP32 coinciden (|Δ| ≤ 0.0001).
+
+Por eso el diseño (D6) fija que **todos los modelos se evalúan con letterbox cuadrado 640×640 (`rect=False`)
+y batch 1**, y que ΔmAP se calcula **dentro del mismo motor**: en GPU, TRT FP32 − TRT {FP16, INT8, QAT INT8};
+en CPU, OV FP32 − OV INT8. El .pt FP32 evaluado con `rect=False` sirve de control: debe coincidir con TRT FP32
+(|Δ mAP@0.5| < 0.002).
 
 ---
 

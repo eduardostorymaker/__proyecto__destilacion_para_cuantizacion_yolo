@@ -136,6 +136,15 @@ la metodología.
 
 ### D6. Evaluación
 - Siempre split test, imgsz=640, batch=1, conf=0.001, iou=0.7, save_json=True.
+- Preprocesado (decisión 2026-10-17): todos los modelos, incluido el .pt FP32, se evalúan con letterbox
+  cuadrado 640×640 (rect=False) y batch 1, igual que los engines estáticos. (La validación por defecto de
+  Ultralytics usa rect=True y da 1–2 puntos más de mAP@0.5 por el preprocesado, no por la cuantización;
+  hallazgo de la exploración PTQ, hecha en validación.)
+- ΔmAP se calcula dentro del mismo motor: GPU = TRT FP32 − TRT {FP16, INT8, QAT INT8};
+  CPU = OV FP32 − OV INT8.
+- El .pt FP32 (rect=False) es control de consistencia: debe coincidir con TRT FP32
+  (|Δ mAP@0.5| < 0.002); si no, avisar antes de seguir.
+- ECE y bootstrap (D7) usan exactamente esas mismas predicciones.
 - Métricas: mAP@0.5, mAP@0.5:0.95, AP por clase, precisión y recall (punto de máximo F1 de
   Ultralytics).
 - ΔmAP = mAP_FP32 − mAP_cuantizado, para PTQ FP16, PTQ INT8 y QAT INT8, global y en D40, con
@@ -169,7 +178,7 @@ Bootstrap pareado:
 - Guardar la distribución bootstrap completa de cada estadístico en `results/bootstrap/*.npy`.
 
 Definiciones:
-- dmAP50 = mAP@0.5(FP32) − mAP@0.5(cuantizado), 4 clases.
+- dmAP50 = mAP@0.5(FP32) − mAP@0.5(cuantizado), 4 clases, dentro del mismo motor (D6).
 - ECE según D6 (conf ≥ 0.25, IoU ≥ 0.5, 15 intervalos).
 - Convención de signo: D > 0 favorece al alumno KD en H1 y H2.
 
