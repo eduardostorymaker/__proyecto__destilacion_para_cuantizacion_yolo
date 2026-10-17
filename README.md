@@ -233,8 +233,34 @@ pone el conjunto de datos, no la capacidad.
 for s in 0 1 2; do bash scripts/train_student.sh --kd off --seed $s; done
 ```
 
-YOLO11n, misma configuración, 300 épocas sin parada temprana → `runs/students/student_base_s{0,1,2}`.
-Validación: mAP@0.5 = 0.342 ± 0.022 y mAP@0.5:0.95 = 0.145 ± 0.006 (media ± d.e. de 3 semillas).
+YOLO11n, misma configuración que los maestros, 300 épocas sin parada temprana →
+`runs/students/student_base_s{0,1,2}`. Unas 2.7 h por corrida, sin NaN.
+
+**Entrenamiento:**
+
+| Corrida | Época de best.pt | Horas | Pendiente de la mAP en las últimas 50 épocas (mAP@0.5 / mAP@0.5:0.95, por 50 ép.) |
+|---|---|---|---|
+| base_s0 | 202 | 2.71 | −0.0023 / −0.0027 |
+| base_s1 | 238 | 2.73 | −0.0006 / −0.0029 |
+| base_s2 | 114 | 2.74 | −0.0021 / −0.0000 |
+
+Las tres corridas convergieron: al final del entrenamiento la mAP de validación está plana o baja levemente.
+
+**Resultados en validación** (best.pt revalidado con imgsz 640, batch 8, conf 0.001, iou 0.7):
+
+| Modelo | mAP@0.5 | mAP@0.5:0.95 | D00 | D10 | D20 | D40 | mAP@0.5 sin D10 |
+|---|---|---|---|---|---|---|---|
+| base_s0 | 0.366 | 0.151 | 0.344 | 0.149 | 0.568 | 0.401 | 0.438 |
+| base_s1 | 0.334 | 0.142 | 0.326 | 0.034 | 0.576 | 0.399 | 0.434 |
+| base_s2 | 0.325 | 0.141 | 0.249 | 0.097 | 0.562 | 0.391 | 0.401 |
+| **Media ± d.e.** | **0.342 ± 0.022** | **0.145 ± 0.006** | | | | **0.397 ± 0.005** | **0.424 ± 0.020** |
+| Maestro YOLO11m (referencia) | 0.345 | 0.147 | 0.311 | 0.034 | 0.597 | 0.437 | 0.449 |
+
+- **Variabilidad entre semillas alta:** 4 puntos de mAP@0.5 entre s0 y s2, lo que justifica entrenar 3
+  semillas. Parte viene de D10 (9 instancias en val), cuyo AP salta entre 0.03 y 0.15.
+- **El maestro apenas supera a los alumnos.** En mAP@0.5 global, base_s0 lo supera por el AP de D10. Sin D10,
+  el maestro gana por unos 2.5 puntos (0.449 frente a 0.424) y en D40 por unos 4 (0.437 frente a 0.397); en
+  mAP@0.5:0.95 la diferencia es de 0.2 puntos. Esto motivó probar un maestro más grande (Fase 2b).
 
 ### Fase 4a — Destilación CWD
 
