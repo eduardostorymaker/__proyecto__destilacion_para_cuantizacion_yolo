@@ -7,6 +7,7 @@ Uso (desde la raíz del proyecto, en WSL):
     python -m src.train.train_student --kd on  --seed 0                 # alumno KD    → student_kd_s0 (λ de kd.yaml)
     python -m src.train.train_student --kd on  --piloto 1.0             # piloto de λ  → pilot_kd_l1.0_s0
     python -m src.train.train_student --kd on  --seed 0 --humo          # prueba de humo
+    python -m src.train.train_student --kd on  --seed 1 --reanudar      # retoma student_kd_s1 desde last.pt
 """
 
 from __future__ import annotations
@@ -29,6 +30,7 @@ def main() -> None:
     ap.add_argument("--seed", type=int)
     ap.add_argument("--piloto", type=float, metavar="LAMBDA", help="corrida del piloto de λ (solo --kd on)")
     ap.add_argument("--humo", action="store_true")
+    ap.add_argument("--reanudar", action="store_true", help="retoma la corrida desde su weights/last.pt")
     args = ap.parse_args()
 
     cfg, kd = cargar_yaml(CFG_TRAIN), cargar_yaml(CFG_KD)
@@ -57,6 +59,17 @@ def main() -> None:
     if args.humo and usa_kd:
         h = kd["humo"]
         kwargs.update(epochs=h["epochs"], fraction=h["fraction"], project=str(resolver_ruta(h["project"])))
+
+    if args.reanudar:
+        # Ultralytics recupera los argumentos y el estado del optimizador desde last.pt
+        last = resolver_ruta(kwargs["project"]) / kwargs["name"] / "weights" / "last.pt"
+        if not last.exists():
+            raise FileNotFoundError(f"No existe {last}: nada que reanudar")
+        model = YOLO(str(last))
+        trainer = crear_trainer_cwd(str(resolver_ruta(kd["maestro"])), lam, kd["tau"]) if usa_kd else None
+        model.train(resume=True, trainer=trainer)
+        print(f"\nPesos: {model.trainer.best}")
+        return
 
     model = YOLO(ruta_pesos_preentrenados(cfg["alumno"]["modelo"]))
     extra = {"rol": "student", "kd": usa_kd, "lambda": lam, "tau": kd["tau"] if usa_kd else None,

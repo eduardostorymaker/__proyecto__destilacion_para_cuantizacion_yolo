@@ -18,7 +18,7 @@ seleccion_maestro:
   metrica: mAP@0.5:0.95 de validación (4 clases)
   margen: 0.010
 tau: 1.0
-lambda: null          # se fija tras el piloto (Fase 4b); obligatorio para las corridas finales
+lambda: 1.0           # piloto 2026-10-16: mayor mAP@0.5:0.95 de val (0.1437 vs 0.1341 λ=0.5, 0.1302 λ=2.0)
 
 # Escala: la pérdida de detección de Ultralytics se multiplica por el tamaño del batch;
 # L_CWD (por imagen, como en MMRazor) se multiplica igual para que λ sea relativo a L_det.

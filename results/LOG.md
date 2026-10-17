@@ -353,3 +353,13 @@
   +0.014 sobre λ=2.0). λ=1.0 es el valor central de la rejilla (no está en un extremo).
 - Advertencia: una sola semilla y 50 épocas; la mAP seguía subiendo en la época 50 para los 3 λ.
 - Pendiente: confirmación del usuario para fijar `lambda: 1.0` en `configs/kd.yaml`.
+
+## 2026-10-16 — Fase 4b (parte 2): λ fijado y alumnos KD listos
+
+- **Decisión del usuario: λ = 1.0** (`configs/kd.yaml`), según la regla del piloto.
+- Nuevo `--reanudar` en `src/train/train_student.py` (retoma desde `weights/last.pt`). Para el alumno KD, los
+  adaptadores se guardan en `weights/kd_adaptadores_last.pt` en cada checkpoint (no entran en best.pt/last.pt)
+  y se restauran al reanudar. Prueba: humo KD de 2 épocas, proceso matado tras la época 1 y reanudado → retoma en
+  la época 2, adaptadores restaurados, termina OK. Una corrida reanudada no es idéntica bit a bit a una sin cortes
+  (estado aleatorio del cargador de datos): si se usa en una corrida final, se anota aquí.
+- Pendiente: `for s in 0 1 2; do bash scripts/train_student.sh --kd on --seed $s; done` (~17 h).

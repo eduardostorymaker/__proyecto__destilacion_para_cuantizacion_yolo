@@ -19,6 +19,8 @@ commit 0919f692878fe0037ff94bc90e46eed721c64a39).
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import torch
 import torch.nn.functional as F
 from torch import nn
@@ -27,6 +29,8 @@ from ultralytics.nn.modules.head import Detect
 from ultralytics.nn.tasks import load_checkpoint
 from ultralytics.utils import LOGGER
 from ultralytics.utils.torch_utils import unwrap_model
+
+ARCHIVO_ADAPTADORES = "kd_adaptadores_last.pt"  # en weights/, solo para reanudar; no se exporta
 
 
 def perdida_cwd(f_alumno: torch.Tensor, f_maestro: torch.Tensor, tau: float) -> torch.Tensor:
@@ -87,6 +91,11 @@ def crear_trainer_cwd(ruta_maestro: str, lam: float, tau: float):
             with torch.random.fork_rng(devices=[self.device] if self.device.type == "cuda" else []):
                 self.adaptadores = nn.ModuleList(nn.Conv2d(a, m, 1) for a, m in zip(ch_a, ch_m)).to(self.device)
             self.maestro = maestro
+            # Al reanudar (resume), los adaptadores vuelven al estado guardado junto a last.pt
+            ruta_adapt = Path(self.wdir) / ARCHIVO_ADAPTADORES
+            if self.args.resume and ruta_adapt.exists():
+                self.adaptadores.load_state_dict(torch.load(ruta_adapt, map_location=self.device))
+                LOGGER.info(f"CWD: adaptadores restaurados desde {ruta_adapt}")
             grupo = next(g for g in optimizador.param_groups if g.get("param_group") == "weight")
             optimizador.add_param_group({k: v for k, v in grupo.items() if k != "params"}
                                         | {"params": list(self.adaptadores.parameters()), "param_group": "kd_adapter"})
@@ -100,6 +109,12 @@ def crear_trainer_cwd(ruta_maestro: str, lam: float, tau: float):
             alumno = unwrap_model(self.model)
             base = alumno.criterion if getattr(alumno, "criterion", None) is not None else alumno.init_criterion()
             alumno.criterion = CriterioCWD(base, alumno, self.maestro, self.adaptadores, lam, tau, bool(self.amp))
+
+        def save_model(self):
+            # Los adaptadores no van en best.pt/last.pt; se guardan aparte solo para poder reanudar
+            guardado = super().save_model()
+            torch.save(self.adaptadores.state_dict(), Path(self.wdir) / ARCHIVO_ADAPTADORES)
+            return guardado
 
         def optimizer_step(self):
             # Igual que BaseTrainer.optimizer_step (8.4.164), pero el recorte de gradientes (norma 10) se
