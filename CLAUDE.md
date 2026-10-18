@@ -114,6 +114,12 @@ la metodología.
   calibre con val o test. Mismas imágenes para todos los modelos y para la QAT.
 - Engine inspector: por cada engine INT8, reportar número y porcentaje de capas en INT8, FP16 y
   FP32 en `results/tables/engine_layers.csv`.
+- Cada engine TensorRT/OpenVINO se construye UNA sola vez y se registra con su hash SHA-256 en
+  `results/tables/engines.csv` (con versión del driver NVIDIA, CUDA, TensorRT y OpenVINO). La evaluación y la
+  eficiencia usan siempre esos archivos y verifican el hash antes (`src/quant/engines_registry.py`).
+- Exploratorio (después de la Fase 6): sensibilidad a la calibración. Recalibrar base_s0 y kd_s0 con 2
+  conjuntos de calibración adicionales (500 imágenes de train, estratificadas, mismas reglas, semillas 43 y 44)
+  y reportar la variación del ΔmAP INT8 entre los 3 conjuntos (42, 43, 44).
 - Se cuantizan: 6 alumnos (todas las precisiones) y el maestro (TensorRT FP16 e INT8, como
   referencia).
 
@@ -131,6 +137,11 @@ la metodología.
 - Confirmar qué calibrador usa ModelOpt por defecto para las activaciones y registrarlo
   (LOG.md y Métodos).
 - `configs/qat.yaml`. Prueba de humo con 1 alumno y 1 época antes de las 6 corridas.
+- Configuración CONGELADA el 2026-10-18 en `configs/qat.yaml`. Punto de control: best.pt por el fitness de
+  Ultralytics en VALIDACIÓN (igual que los alumnos, D2). La prueba de humo se evalúa solo en validación; el
+  test de la QAT no se mira hasta evaluarla con `src/eval/evaluate.py`.
+- Calibración de la QAT con las 500 imágenes de calib.yaml, sin aumentación (no los 8 lotes aumentados que
+  usa Ultralytics por defecto). Calibrador de ModelOpt: algoritmo "max", activaciones por tensor, pesos por canal.
 - Si la integración se bloquea seriamente, avisar: la QAT es opcional y el paper puede seguir
   solo con PTQ.
 
@@ -225,6 +236,12 @@ antes de ver los resultados reales.
 - Separar preproceso, inferencia y postproceso (NMS); latencia principal = inferencia.
   FPS = 1000 / latencia media de inferencia.
 - Tamaño en MB del archivo exportado. Registrar driver NVIDIA y CUDA.
+- Sistema sin otra carga durante la medición (sin entrenamientos ni otras aplicaciones pesadas).
+- 3 repeticiones completas de la medición por modelo (cada una con sus 50 calentamientos + 500 medidas);
+  reportar la variación entre repeticiones.
+- Registrar el estado de los relojes de la GPU (frecuencias de SM y memoria, estado de energía) antes y
+  durante la medición.
+- Usar exactamente los engines registrados en `results/tables/engines.csv` (verificar el hash).
 - `results/tables/efficiency.csv`.
 
 ## Pipeline (orden de ejecución)
@@ -279,6 +296,9 @@ proyecto/
 - Antes de cualquier cambio al diseño experimental de arriba, pregúntame: afecta la validez del paper.
 - Si un resultado parece raro (p. ej., INT8 mejor que FP32 por mucho), avísame en vez de seguir.
 - Mantén un `results/LOG.md` con fecha, qué se corrió y resultado principal de cada fase.
+- Registra cada desviación del protocolo en `results/tables/protocol_deviations.csv` (fecha, cambio, motivo,
+  ¿antes o después de ver test?).
+- Actualiza `results/tables/compute_budget.csv` (horas de GPU por fase) con `python -m src.report.compute_budget`.
 
 ## Estado actual
 

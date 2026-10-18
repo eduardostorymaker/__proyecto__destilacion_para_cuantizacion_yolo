@@ -40,6 +40,7 @@ from ultralytics.utils import LOGGER
 from ultralytics.utils.torch_utils import qat_state, strip_qat
 
 from src.quant.engine_layers import contar_capas
+from src.quant.engines_registry import registrar
 from src.quant.export_all import agregar_fila, leer_hechos, tamano_mb, verificar_calibracion
 from src.train.common import argumentos_entrenamiento, callback_metadatos
 from src.utils.config import cargar_yaml, resolver_ruta
@@ -141,6 +142,7 @@ def main() -> None:
             ctrl = guardar_control(pt, proyecto / f"mopt_{grupo}_s{seed}{sufijo}", cal)
             eng, seg = exportar_qdq(ctrl, salida_exp / f"{nombre}_tensorrt_mopt_int8", ex, calib)
             if not a.humo:
+                registrar(nombre, "tensorrt", "mopt_int8", eng)
                 agregar_fila(t_exp, {"modelo": nombre, "formato": "tensorrt", "precision": "mopt_int8",
                                      "ruta": str(eng.relative_to(resolver_ruta("."))), "MB": round(tamano_mb(eng), 2),
                                      "segundos": round(seg, 1), "calibracion": f"ModelOpt max, {cal['data']}"})
@@ -162,11 +164,14 @@ def main() -> None:
             t0 = time.perf_counter()
             modelo.train(**kw)
             horas = (time.perf_counter() - t0) / 3600
-            best = Path(modelo.trainer.best)
+            if cfg["punto_control"] not in ("best", "last"):
+                raise ValueError("configs/qat.yaml: punto_control debe ser 'best' o 'last'")
+            best = Path(modelo.trainer.best if cfg["punto_control"] == "best" else modelo.trainer.last)
             eng, seg = exportar_qdq(best, salida_exp / f"{nombre}_tensorrt_qat_int8", ex, calib)
             (eng.parent / "entorno.json").write_text(json.dumps(info_entorno() | {"origen": str(best),
                                                      "horas_ajuste": round(horas, 2)}, indent=2), encoding="utf-8")
             if not a.humo:
+                registrar(nombre, "tensorrt", "qat_int8", eng)
                 agregar_fila(t_exp, {"modelo": nombre, "formato": "tensorrt", "precision": "qat_int8",
                                      "ruta": str(eng.relative_to(resolver_ruta("."))), "MB": round(tamano_mb(eng), 2),
                                      "segundos": round(seg, 1), "calibracion": f"ModelOpt max + QAT, {cal['data']}"})

@@ -1,0 +1,15 @@
+fase,concepto,corridas,horas_gpu,fuente
+1b — Pruebas de tiempo,maestro AMP 3 ép. + alumno AMP 3 ép.,3,0.4,medido (runs/timing/*/results.csv)
+2 — Maestros,YOLO11m teacher_s0,1,6.21,medido (runs/teacher/teacher_s0/results.csv)
+2 — Maestros,YOLO11l teacher_l_s0 (candidato),1,6.08,medido (runs/teacher/teacher_l_s0/results.csv)
+2 — Maestros,"YOLO11m diseño v2 (obsoleto, detenido en la época 47)",1,1.59,medido (runs/obsoletos/teacher_s0_v2_3clases_150ep/results.csv)
+3 — Alumnos base,student_base_s0..s2,3,8.18,medido (runs/students/student_base_s*/results.csv)
+4b — Piloto de λ,"pilot_kd_l{0.5,1.0,2.0}_s0",3,3.13,medido (runs/pilot/pilot_kd_*/results.csv)
+4b — Alumnos KD,student_kd_s0..s2,3,18.86,medido (runs/students/student_kd_s*/results.csv)
+5 — Exportación PTQ,33 exportaciones,33,1.35,medido (results/tables/exports.csv)
+1b — Pruebas de tiempo,maestro FP32 (detenido en la época 2) + forward del maestro,,0.5,estimado (LOG 2026-09-28: época 1 de 947 s y época 2 al 79 %)
+6 — Evaluación,40 evaluaciones en test (7 .pt + 33 exportaciones),,0.3,"estimado (LOG 2026-10-18: ~10 s por evaluación en GPU, más lento en CPU)"
+Exploración,ptq_check (9 engines + 15 evaluaciones en val),,1.0,estimado (LOG 2026-10-03)
+Exploración,diagnóstico del maestro INT8 (OV + evaluaciones + activaciones),,0.2,estimado (LOG 2026-10-18)
+Pruebas de humo,"maestros, alumnos, KD, piloto, QAT",,0.3,estimado (suma aproximada de las pruebas de humo)
+TOTAL,,,48.1,

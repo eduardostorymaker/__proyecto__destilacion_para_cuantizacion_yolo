@@ -25,6 +25,7 @@ from pathlib import Path
 from ultralytics import YOLO
 
 from src.quant.engine_layers import contar_capas
+from src.quant.engines_registry import registrar
 from src.utils.config import cargar_yaml, resolver_ruta
 from src.utils.repro import info_entorno
 
@@ -141,6 +142,7 @@ def main() -> None:
                 destino = salida / f"{nombre}_{formato}_{prec}"
                 print(f">> {nombre} {formato} {prec}", flush=True)
                 ruta, seg, nota = exportar(pt, destino, formato, prec, ex, calib)
+                registrar(nombre, formato, prec, ruta)  # hash SHA-256 en results/tables/engines.csv
                 agregar_fila(t_exp, {"modelo": nombre, "formato": formato, "precision": prec,
                                      "ruta": str(ruta.relative_to(resolver_ruta("."))), "MB": round(tamano_mb(ruta), 2),
                                      "segundos": round(seg, 1), "calibracion": nota})

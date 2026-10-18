@@ -607,3 +607,26 @@ Resultados (TensorRT, media ± d.e. de 3 semillas; descriptivo, la inferencia es
   en PyTorch. Estimación: 150–210 s por época → 1.3–1.8 h por alumno → **~9–11 h** para los 6 alumnos.
 - `src/eval/evaluate.py`: ΔmAP de TensorRT ahora incluye `mopt_int8` y `qat_int8`.
 - Pendiente: `bash scripts/qat.sh` (6 alumnos).
+
+## 2026-10-18 — Controles antes de la Fase 5b (petición del usuario)
+
+- **QAT congelada** (`configs/qat.yaml`): configuración final de D5 y punto de control = **best.pt por el fitness
+  de Ultralytics en validación** (misma regla que los alumnos base y KD, D2); alternativa no elegida: última época.
+  `src/quant/qat.py` lee `punto_control`. La prueba de humo de la QAT se evaluó solo en validación; el test de la
+  QAT no se mira hasta evaluarla con `src/eval/evaluate.py`.
+- **Desviaciones del protocolo:** `results/tables/protocol_deviations.csv` con 10 filas: reversión de D10, AMP,
+  maestro YOLO11l candidato, letterbox rect=False / ΔmAP por motor, Japón diferido, calibrador de Ultralytics,
+  cache='disk', maestro también en TRT FP32, orden PTQ-en-test antes de la QAT y calibración/punto de control de la
+  QAT. Todas antes de ver test, salvo las dos últimas (después de ver el test de PTQ, antes del de QAT).
+  **La fila "Japón diferido" queda PENDIENTE de completar por el usuario** (no hay registro en este LOG).
+- **Engines con hash:** `src/quant/engines_registry.py` → `results/tables/engines.csv`: los 33 engines de la Fase 5
+  registrados con SHA-256 y verificados (sin cambios desde su construcción en la Fase 5, antes de la Fase 6).
+  Entorno: **driver NVIDIA 616.92, CUDA 13.4 (driver) / 13.0 (PyTorch), TensorRT 10.16.1.11, OpenVINO 2026.4.0**.
+  `export_all.py` y `qat.py` registran cada engine nuevo; `evaluate.py` verifica el hash antes de evaluar.
+- **Presupuesto de cómputo:** `python -m src.report.compute_budget` → `results/tables/compute_budget.csv`.
+  Hasta hoy ~48 h de GPU (maestros 13.9 h incl. 1.6 h de la corrida v2 obsoleta, alumnos base 8.2 h, piloto λ 3.1 h,
+  alumnos KD 18.9 h, exportación 1.4 h, resto pruebas/exploración/evaluación, parte estimada). QAT pendiente.
+- **Exploratorio planificado (después de la Fase 6):** sensibilidad a la calibración: recalibrar base_s0 y kd_s0
+  con 2 conjuntos de calibración adicionales (semillas 43 y 44, mismas reglas) y reportar la variación del ΔmAP.
+- **Fase 8 (D8):** sistema sin otra carga, 3 repeticiones de la medición, registro del estado de los relojes de la
+  GPU y uso exclusivo de los engines registrados (hash verificado).

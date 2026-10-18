@@ -30,6 +30,7 @@ import numpy as np
 from ultralytics import YOLO
 
 from src.eval.ece import cargar_gt, cargar_predicciones, ece, emparejar
+from src.quant.engines_registry import verificar
 from src.utils.config import cargar_yaml, resolver_ruta
 
 CLASES = ["D00", "D10", "D20", "D40"]
@@ -167,6 +168,8 @@ def main() -> None:
             if (modelo, formato, prec) in hechos:
                 continue
             print(f">> {modelo} {formato} {prec}", flush=True)
+            if formato != "pytorch":
+                verificar(ruta)  # se evalúa siempre el engine registrado (hash SHA-256 sin cambios)
             fila = evaluar(cfg, modelo, formato, prec, ruta, gt)
             nuevo = not tabla.exists()
             tabla.parent.mkdir(parents=True, exist_ok=True)
