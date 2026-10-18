@@ -50,7 +50,7 @@ entrenamiento.
 | 4a | Implementación de CWD | ✅ |
 | 4b | Piloto de λ (λ = 1.0) y alumnos KD (3 semillas) | ✅ |
 | 5 | Cuantización PTQ (TensorRT y OpenVINO) | ✅ |
-| 5b | QAT con NVIDIA ModelOpt | pendiente |
+| 5b | QAT con NVIDIA ModelOpt | ⏳ implementada, lista para lanzar |
 | 6 | Evaluación en test (mAP, ECE) | ✅ PTQ (la QAT se evalúa con el mismo código) |
 | 7 | Estadística (bootstrap, Holm) | pendiente |
 | 8 | Eficiencia (latencia, FPS, tamaño) | pendiente |

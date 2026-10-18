@@ -8,7 +8,8 @@ Salidas:
   runs/eval/{modelo}_{formato}_{precision}/predictions.json   predicciones por imagen (para ECE y bootstrap)
   results/metrics.csv                     una fila por modelo/semilla/formato/precisión
   results/tables/consistency_pt_vs_trt.csv  |mAP@0.5(.pt FP32) − mAP@0.5(TRT FP32)| (debe ser < 0.002)
-  results/tables/delta_map.csv            Δ = FP32 − cuantizado dentro del mismo motor (TRT y OV)
+  results/tables/delta_map.csv            Δ = FP32 − cuantizado dentro del mismo motor (TRT: fp16, int8, mopt_int8,
+                                          qat_int8; OV: int8)
 
 Reanudable: las combinaciones ya presentes en metrics.csv se saltan.
 
@@ -114,7 +115,7 @@ def tablas(cfg: dict) -> None:
     deltas = []
     metricas = ["mAP50", "mAP50_95", "AP50_D40", "mAP50_sin_D10", "P", "R"]
     for m in modelos:
-        for motor, precs in (("tensorrt", ["fp16", "int8"]), ("openvino", ["int8"])):
+        for motor, precs in (("tensorrt", ["fp16", "int8", "mopt_int8", "qat_int8"]), ("openvino", ["int8"])):
             ref = idx.get((m, motor, "fp32"))
             for p in precs:
                 q = idx.get((m, motor, p))
@@ -134,7 +135,8 @@ def tablas(cfg: dict) -> None:
         print(f"  {c['modelo']:<16} pt {c['mAP50_pt']}  trt {c['mAP50_trt_fp32']}  Δ {c['dif']:+.5f}  "
               f"{'OK' if c['ok'] else '⚠️  FUERA DE TOLERANCIA'}")
     print("\n=== Δ = FP32 − cuantizado (media ± d.e. por grupo) ===")
-    for motor, p in (("tensorrt", "fp16"), ("tensorrt", "int8"), ("openvino", "int8")):
+    for motor, p in (("tensorrt", "fp16"), ("tensorrt", "int8"), ("tensorrt", "mopt_int8"), ("tensorrt", "qat_int8"),
+                     ("openvino", "int8")):
         for g in ("base", "kd", "maestro"):
             sel = [d for d in deltas if d["motor"] == motor and d["precision"] == p and d["grupo"] == g]
             if not sel:

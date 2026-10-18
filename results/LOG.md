@@ -577,3 +577,33 @@ Resultados (TensorRT, media ± d.e. de 3 semillas; descriptivo, la inferencia es
 
 - Por decisión del usuario, la Fase 6 se da por terminada con los modelos PTQ. Los modelos QAT (Fase 5b)
   se evaluarán con el mismo `src/eval/evaluate.py` y la misma configuración (`configs/eval.yaml`).
+
+## 2026-10-18 — Fase 5b: QAT implementada y probada (humo)
+
+- Ultralytics 8.4.164 trae QAT con ModelOpt (`train(quantize=8)`: `prepare_qat`, cuantización explícita Q/DQ).
+  `src/quant/qat.py` (config `configs/qat.yaml`, lanzador `scripts/qat.sh`) la usa con dos cambios para cumplir D5:
+  1. La calibración inicial usa las 500 imágenes de `configs/calib.yaml`, sin aumentación y con letterbox cuadrado
+     (Ultralytics usa 8 lotes aumentados del cargador de entrenamiento). Misma config de ModelOpt y mismas capas
+     en float que Ultralytics (salidas de la cabeza y DFL).
+  2. Antes del ajuste fino se guarda y exporta el modelo solo calibrado ("ModelOpt PTQ", control).
+- **Calibrador de ModelOpt por defecto (D5):** `mtq.INT8_DEFAULT_CFG`, algoritmo **"max"** (máximo absoluto);
+  activaciones INT8 por tensor (axis=None) y pesos INT8 por canal de salida (axis=0). 428 cuantizadores en el YOLO11n.
+- Ajuste fino: solo pérdida de detección (también para los alumnos KD), 30 épocas, lr0 0.001, lrf 0.01, warmup 0,
+  mosaic 0, patience 30, AMP; resto igual a `configs/train.yaml`. Se exporta best.pt → ONNX con Q/DQ → TensorRT INT8
+  (sin recalibrar). Filas nuevas en `exports.csv`: `tensorrt/mopt_int8` (control) y `tensorrt/qat_int8`.
+- Instalados `nvidia-modelopt==0.47.0` y `huggingface_hub==2.2.0` (fijados en requirements.txt y en el lock).
+- Prueba de humo (`--alumnos student_base_s0 --humo`: 1 época, 5 % de train), flujo completo OK. Validación
+  (letterbox cuadrado, batch 1), student_base_s0:
+
+| Variante | val mAP@0.5 | val mAP@0.5:0.95 |
+|---|---|---|
+| TensorRT FP32 | 0.3447 | 0.1414 |
+| TensorRT PTQ INT8 (Ultralytics, Fase 5) | 0.3087 | 0.1258 |
+| TensorRT ModelOpt PTQ INT8 (control, humo) | 0.3150 | 0.1327 |
+| TensorRT QAT INT8 (1 época, 5 % de train, humo) | 0.3433 | 0.1371 |
+
+- Velocidad: paso de entrenamiento con QAT 0.16 s/lote frente a 0.046 sin QAT (~3.5×); el modo determinista apenas
+  influye (0.14 s sin él). ModelOpt no puede usar su extensión CUDA compilada (falta `nvcc` en WSL) y usa su versión
+  en PyTorch. Estimación: 150–210 s por época → 1.3–1.8 h por alumno → **~9–11 h** para los 6 alumnos.
+- `src/eval/evaluate.py`: ΔmAP de TensorRT ahora incluye `mopt_int8` y `qat_int8`.
+- Pendiente: `bash scripts/qat.sh` (6 alumnos).
