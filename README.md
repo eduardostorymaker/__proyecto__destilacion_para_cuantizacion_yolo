@@ -354,6 +354,7 @@ El plan estadístico (hipótesis, α, δ y número de remuestreos) está fijado 
 | Script | Pregunta | Resultado |
 |---|---|---|
 | `scripts/exploracion/explora_teacher_l.py` | ¿Cabe y cuánto cuesta un maestro YOLO11l? | 143 s/época y 5.3 GB; motivó la Fase 2b |
+| `scripts/exploracion/teacher_int8_diag.py` | ¿Por qué colapsan las confianzas del maestro en TensorRT INT8? (en **validación**) | Valores extremos en las activaciones de su cabeza (máx/p99.99 hasta 37, frente a ≤ 2.4 en los alumnos) arruinan la escala MinMax; con OpenVINO/NNCF el maestro no pierde nada |
 | `scripts/exploracion/ptq_check.py` | ¿La PTQ INT8 degrada a los alumnos base? (en **validación**, para no ver el test) | Sí, en 3/3 semillas: −3.1 puntos de mAP@0.5 (−9.5 %), −4.3 en D40 y −3.9 de recall; la precisión sube (modelo más conservador). FP16 no pierde nada |
 
 Uso: `PYTHONPATH=. python scripts/exploracion/<script>.py`.

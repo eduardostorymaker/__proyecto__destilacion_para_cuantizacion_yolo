@@ -543,3 +543,32 @@ Resultados (TensorRT, media ± d.e. de 3 semillas; descriptivo, la inferencia es
   "ΔmAP del maestro frente a los alumnos". Pendiente de decisión del usuario.
 - Observación menor: la precisión en el punto de máximo F1 de OpenVINO INT8 sube a ~0.60–0.65 con la mAP
   casi igual; es un punto de operación inestable (ver nota de la exploración PTQ).
+
+## 2026-10-18 — Exploración: colapso de confianzas del maestro en TensorRT INT8 (en VALIDACIÓN)
+
+- Decisión del usuario: investigar la causa antes de reportarlo (opción b). Sin cambios de diseño.
+- `PYTHONPATH=. python scripts/exploracion/teacher_int8_diag.py` (log `runs/logs/exploracion_teacher_int8.log`,
+  tabla `results/tables/exploracion_teacher_int8.csv`). Todo en validación.
+
+| Variante (val) | mAP@0.5 | mAP@0.5:0.95 | Conf. máxima | Detecciones con conf ≥ 0.25 |
+|---|---|---|---|---|
+| Maestro TRT FP32 | 0.331 | 0.134 | 0.906 | 840 |
+| **Maestro TRT INT8** | **0.145** | **0.053** | **0.254** | **2** |
+| Maestro OV FP32 | 0.331 | 0.134 | 0.906 | 840 |
+| Maestro OV INT8 (NNCF) | 0.330 | 0.134 | 0.910 | 866 |
+| Alumno base_s0 TRT INT8 | 0.309 | 0.126 | 0.879 | 620 |
+
+1. **El colapso es propio de TensorRT (calibración MinMax), no del modelo:** el mismo maestro cuantizado con
+   OpenVINO/NNCF no pierde nada (0.331 → 0.330). También ocurre en validación, no solo en test.
+2. **La cabeza queda cuantizada igual en maestro y alumno:** 43 capas; en la rama de clasificación (cv3), las 4
+   convoluciones intermedias de cada nivel en INT8 y la convolución de salida en FP16, en ambos modelos.
+3. **Causa: valores extremos en las activaciones de la cabeza del maestro.** Con 100 imágenes de calibración,
+   cociente máximo absoluto / percentil 99.99 por convolución:
+   - Maestro: mediana 2.4, pero en la cabeza hasta **37** (`model.23.cv3.2.1.1`: máx 474 frente a p99.99 de 12.8)
+     y 14–36 en la rama de cajas (cv2).
+   - Alumno base_s0: ninguna capa supera **2.4**; en la rama de clasificación, máx 69 con cociente 2.4.
+   MinMax fija la escala INT8 con el máximo absoluto (474/127 ≈ 3.7 por nivel), así que los valores típicos
+   (~13) quedan representados con unos 3–4 niveles: los logits de clase se destruyen y las confianzas caen.
+- Conclusión para el paper: con la misma receta PTQ (TensorRT + MinMax), el modelo grande colapsa por valores
+  extremos en su cabeza mientras los alumnos no; OpenVINO/NNCF es robusto a ese efecto. Se reporta el maestro
+  INT8 de TensorRT tal cual, con esta explicación.
