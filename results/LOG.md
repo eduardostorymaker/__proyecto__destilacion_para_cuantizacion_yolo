@@ -509,3 +509,37 @@
   elige la táctica más rápida por capa al construir), sin diferencia sistemática entre base y KD (INT8:
   base 65.9 % ± 1.8, KD 64.8 % ± 0.0). La comparación base vs. KD no queda sesgada por la composición del engine.
 - **Resultado: Fase 5 completada.**
+
+## 2026-10-18 — Fase 6: evaluación en TEST (PTQ; la QAT se evaluará después)
+
+- Decisión del usuario: evaluar primero los modelos PTQ (opción a) y dejar la QAT para después.
+- `bash scripts/evaluate.sh` → `src/eval/evaluate.py` (config `configs/eval.yaml`): 40 evaluaciones en test
+  (7 .pt FP32 + 33 exportaciones), letterbox cuadrado 640×640 (rect=False), batch 1, conf 0.001, iou 0.7,
+  save_json. TensorRT y .pt en GPU; OpenVINO en CPU. Predicciones en `runs/eval/*/predictions.json`.
+  Tablas: `results/metrics.csv`, `results/tables/consistency_pt_vs_trt.csv`, `results/tables/delta_map.csv`.
+- ECE (`src/eval/ece.py`): conf ≥ 0.25, emparejamiento greedy por confianza con IoU ≥ 0.5, correcta si
+  coincide la clase, 15 intervalos de igual ancho sobre [0, 1]. Probado con casos sintéticos antes de usarlo.
+- Ground truth de test: 1 166 imágenes, 1 000 cajas.
+- **Control de consistencia (.pt FP32 vs TRT FP32): OK en los 7 modelos** (|Δ mAP@0.5| ≤ 0.00083 < 0.002).
+
+Resultados (TensorRT, media ± d.e. de 3 semillas; descriptivo, la inferencia es la Fase 7):
+
+| | FP32 mAP@0.5 | INT8 mAP@0.5 | Δ mAP@0.5 INT8 | Δ mAP@0.5:0.95 INT8 | Δ AP@0.5 D40 INT8 | ECE FP32 | ECE INT8 |
+|---|---|---|---|---|---|---|---|
+| Base | 0.3103 ± 0.0197 | 0.2752 ± 0.0121 | 0.0351 ± 0.0091 | 0.0148 ± 0.0048 | 0.0556 ± 0.0197 | 0.0883 | 0.0964 |
+| KD | 0.3163 ± 0.0049 | 0.2849 ± 0.0039 | 0.0314 ± 0.0068 | 0.0132 ± 0.0046 | 0.0469 ± 0.0077 | 0.0975 | 0.1128 |
+| Maestro | 0.3292 | 0.1509 | 0.1783 | 0.0859 | 0.1141 | 0.0967 | nan |
+
+- Por semilla, Δ mAP@0.5 INT8 (base vs KD): s0 0.0387 vs 0.0243, s1 0.0418 vs 0.0378, s2 0.0248 vs 0.0322 →
+  D = base − KD: +0.0144, +0.0040, −0.0074 (2/3 a favor de KD; media +0.0037).
+- ECE INT8 (base vs KD): s0 0.0879 vs 0.0810, s1 0.0454 vs 0.0696, s2 0.1560 vs 0.1877 → D = base − KD:
+  +0.0069, −0.0242, −0.0317 (1/3 a favor de KD). El ECE varía mucho por semilla (s2 alto en ambos grupos).
+- FP16 (TensorRT) no pierde precisión (|Δ| ≤ 0.003). OpenVINO INT8 (NNCF) casi no pierde: Δ mAP@0.5 base
+  0.0032 ± 0.0076, KD −0.0014 ± 0.0029.
+- **Alerta — maestro TensorRT INT8:** sus confianzas colapsan (máxima en test 0.197 frente a 0.851 en FP32;
+  mediana del máximo por imagen 0.004 frente a 0.113). No hay detecciones con conf ≥ 0.25 → ECE = nan;
+  mAP@0.5 0.329 → 0.151. Los alumnos INT8 conservan confianzas normales (máx. 0.91). Es un fallo de la
+  calibración MinMax del exportador en el YOLO11m, no de la evaluación. Afecta solo al análisis exploratorio
+  "ΔmAP del maestro frente a los alumnos". Pendiente de decisión del usuario.
+- Observación menor: la precisión en el punto de máximo F1 de OpenVINO INT8 sube a ~0.60–0.65 con la mAP
+  casi igual; es un punto de operación inestable (ver nota de la exploración PTQ).

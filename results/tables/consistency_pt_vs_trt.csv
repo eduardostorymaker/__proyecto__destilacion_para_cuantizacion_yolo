@@ -1,0 +1,8 @@
+modelo,mAP50_pt,mAP50_trt_fp32,dif,ok
+student_base_s0,0.32655,0.32651,4e-05,True
+student_base_s1,0.316,0.31593,7e-05,True
+student_base_s2,0.28838,0.28839,-1e-05,True
+student_kd_s0,0.31338,0.31336,2e-05,True
+student_kd_s1,0.32269,0.32186,0.00083,True
+student_kd_s2,0.31334,0.31358,-0.00024,True
+teacher_s0,0.32921,0.32919,2e-05,True
