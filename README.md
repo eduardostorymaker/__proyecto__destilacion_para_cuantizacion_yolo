@@ -49,7 +49,7 @@ entrenamiento.
 | 3 | Alumnos base (3 semillas) | ✅ |
 | 4a | Implementación de CWD | ✅ |
 | 4b | Piloto de λ (λ = 1.0) y alumnos KD (3 semillas) | ✅ |
-| 5 | Cuantización PTQ (TensorRT y OpenVINO) | ⏳ implementada, exportando |
+| 5 | Cuantización PTQ (TensorRT y OpenVINO) | ✅ |
 | 5b | QAT con NVIDIA ModelOpt | pendiente |
 | 6 | Evaluación en test (mAP, ECE) | pendiente |
 | 7 | Estadística (bootstrap, Holm) | pendiente |
@@ -315,11 +315,29 @@ Resultado en validación (media ± d.e. de 3 semillas): mAP@0.5 = 0.347 ± 0.008
 0.147 ± 0.001, frente a 0.342 ± 0.022 y 0.145 ± 0.006 de los alumnos base. `check_kd` confirmó en las 3
 semillas que los best.pt KD no contienen adaptadores.
 
-### Fases 5 a 9 — Pendientes
+### Fase 5 — Cuantización post-entrenamiento (PTQ)
+
+```bash
+bash scripts/export_all.sh                              # todos los modelos de configs/quant.yaml (reanudable)
+bash scripts/export_all.sh --modelos student_kd_s0      # uno o varios
+```
+
+`src/quant/export_all.py` exporta cada modelo, cada precisión por separado desde su best.pt, con el
+exportador de Ultralytics: TensorRT FP32/FP16/INT8 y OpenVINO FP32/INT8 (el maestro solo en TensorRT).
+Antes de exportar verifica que las 500 imágenes de calibración sean de train y no toquen val ni test, y en
+cada INT8 registra de dónde calibró. `src/quant/engine_layers.py` cuenta en qué precisión quedó cada capa
+de los engines INT8.
+
+- 33 exportaciones en `runs/exports/{modelo}_{formato}_{precision}/` (tabla `results/tables/exports.csv`).
+- Tamaño de un alumno: TensorRT 12.9 MB (FP32) → 7.5 MB (FP16) → 4.5 MB (INT8); OpenVINO 10.2 → 3.2 MB.
+- El INT8 de TensorRT es mixto: ~65–68 % de las capas de cómputo quedan en INT8 y el resto en FP16 o FP32
+  (por ejemplo, el bloque de atención y la sigmoide final). El patrón es el mismo en alumnos base y KD
+  (`results/tables/engine_layers.csv`).
+
+### Fases 5b a 9 — Pendientes
 
 | Fase | Qué hará | Configuración |
 |---|---|---|
-| 5 — PTQ | Exportar los 6 alumnos (y el maestro como referencia) a TensorRT FP32/FP16/INT8 y OpenVINO FP32/INT8; registrar qué capas quedan en INT8, FP16 o FP32 | `configs/calib.yaml` |
 | 5b — QAT | Cuantización durante el entrenamiento con NVIDIA ModelOpt: calibrar, evaluar sin ajuste (control) y ajustar 30 épocas | `configs/qat.yaml` (por crear) |
 | 6 — Evaluación | Todos los modelos en el split **test** con letterbox cuadrado (`rect=False`), batch 1: mAP, AP por clase, precisión, recall y ECE; ΔmAP dentro del mismo motor | — |
 | 7 — Estadística | Bootstrap pareado (1 000 remuestreos), contrastes H1a–H3 con corrección de Holm | — |

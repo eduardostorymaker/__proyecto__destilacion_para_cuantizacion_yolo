@@ -483,3 +483,29 @@
   C3k2 (`model.8`, `model.22`) y la sigmoide final de la cabeza (`model.23`, forzada por Ultralytics).
   El INT8 de TensorRT es mixto, como se esperaba (D4).
 - Pendiente: exportar los 6 modelos restantes (~75 min estimados).
+
+## 2026-10-18 — Fase 5: PTQ completada (33 exportaciones)
+
+- `bash scripts/export_all.sh` (log `runs/logs/export_all_20261018_160322.log`); saltó student_base_s0 (ya
+  exportado) y terminó con `FIN` sin errores. `results/tables/exports.csv`: 33 filas, sin duplicados
+  (6 alumnos × 5 + maestro × 3). Las 13 exportaciones INT8 (7 TensorRT + 6 OpenVINO) registran la
+  calibración con `configs/calib.yaml`; verificación previa: 500 imágenes de train, ninguna de val/test.
+- Tamaños (MB): alumnos TRT FP32 12.8–12.9, FP16 7.3–7.6, INT8 4.4–4.6; OV FP32 10.2, OV INT8 3.2.
+  Maestro TRT FP32 90.2, FP16 41.5, INT8 21.9. Tiempo de exportación: ~11.5 min por alumno, ~13 min el maestro.
+- Capas de los engines INT8 (`results/tables/engine_layers.csv`; capas de cómputo, sin Reformat):
+
+| Modelo | Capas de cómputo | INT8 | FP16 | FP32 | Convoluciones con pesos INT8/FP16/FP32 |
+|---|---|---|---|---|---|
+| student_base_s0 | 122 | 68.0 % | 15.6 % | 16.4 % | 79/8/1 de 88 |
+| student_base_s1 | 122 | 64.8 % | 22.1 % | 13.1 % | 79/8/1 de 88 |
+| student_base_s2 | 122 | 64.8 % | 17.2 % | 18.0 % | 79/8/1 de 88 |
+| student_kd_s0 | 122 | 64.8 % | 15.6 % | 19.7 % | 79/8/1 de 88 |
+| student_kd_s1 | 122 | 64.8 % | 22.1 % | 13.1 % | 79/8/1 de 88 |
+| student_kd_s2 | 122 | 64.8 % | 18.0 % | 17.2 % | 79/8/1 de 88 |
+| teacher_s0 | 147 | 71.4 % | 16.3 % | 12.2 % | 104/9/0 de 113 |
+
+- Todos los alumnos quedan con el mismo patrón en las convoluciones (79 INT8, 8 FP16 y 1 FP32) y ~65–68 % de
+  capas de cómputo en INT8. El reparto entre FP16 y FP32 de las capas no INT8 varía entre engines (TensorRT
+  elige la táctica más rápida por capa al construir), sin diferencia sistemática entre base y KD (INT8:
+  base 65.9 % ± 1.8, KD 64.8 % ± 0.0). La comparación base vs. KD no queda sesgada por la composición del engine.
+- **Resultado: Fase 5 completada.**
