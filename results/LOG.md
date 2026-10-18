@@ -572,3 +572,8 @@ Resultados (TensorRT, media ± d.e. de 3 semillas; descriptivo, la inferencia es
 - Conclusión para el paper: con la misma receta PTQ (TensorRT + MinMax), el modelo grande colapsa por valores
   extremos en su cabeza mientras los alumnos no; OpenVINO/NNCF es robusto a ese efecto. Se reporta el maestro
   INT8 de TensorRT tal cual, con esta explicación.
+
+## 2026-10-18 — Fase 6 cerrada
+
+- Por decisión del usuario, la Fase 6 se da por terminada con los modelos PTQ. Los modelos QAT (Fase 5b)
+  se evaluarán con el mismo `src/eval/evaluate.py` y la misma configuración (`configs/eval.yaml`).

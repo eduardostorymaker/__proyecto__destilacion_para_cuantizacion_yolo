@@ -51,7 +51,7 @@ entrenamiento.
 | 4b | Piloto de λ (λ = 1.0) y alumnos KD (3 semillas) | ✅ |
 | 5 | Cuantización PTQ (TensorRT y OpenVINO) | ✅ |
 | 5b | QAT con NVIDIA ModelOpt | pendiente |
-| 6 | Evaluación en test (mAP, ECE) | ⏳ PTQ evaluada; falta QAT |
+| 6 | Evaluación en test (mAP, ECE) | ✅ PTQ (la QAT se evalúa con el mismo código) |
 | 7 | Estadística (bootstrap, Holm) | pendiente |
 | 8 | Eficiencia (latencia, FPS, tamaño) | pendiente |
 | 9 | Tablas y figuras del paper | pendiente |

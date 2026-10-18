@@ -293,7 +293,7 @@ proyecto/
 - [x] Fase 4b — Piloto λ (λ = 1.0) + alumnos KD (2026-10-17; val mAP@0.5 0.3467 ± 0.0079; check_kd OK)
 - [x] Fase 5 — PTQ (2026-10-18; 33 exportaciones TRT/OV; ~65 % de capas de cómputo en INT8)
 - [ ] Fase 5b — QAT
-- [ ] Fase 6 — Evaluación (PTQ hecha 2026-10-18: `results/metrics.csv`; falta QAT; alerta maestro INT8)
+- [x] Fase 6 — Evaluación (2026-10-18, PTQ: `results/metrics.csv`; los modelos QAT se evaluarán con el mismo `src/eval/evaluate.py`)
 - [ ] Fase 7 — Estadística
 - [ ] Fase 8 — Eficiencia
 - [ ] Fase 9 — Tablas y figuras
