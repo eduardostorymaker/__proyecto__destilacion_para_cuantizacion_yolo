@@ -1,0 +1,82 @@
+{
+  "clases": [
+    "D00",
+    "D10",
+    "D20",
+    "D40"
+  ],
+  "auditoria_cajas": {
+    "original": {
+      "D20": 6199,
+      "D40": 2243,
+      "D10": 3979,
+      "D00": 4049,
+      "D44": 3995,
+      "D43": 736,
+      "D50": 3553
+    },
+    "r1_otra_clase": {
+      "D44": 3995,
+      "D43": 736,
+      "D50": 3553
+    },
+    "r2_recortada": {},
+    "r3_menor_1px": {
+      "D20": 1
+    },
+    "r4_duplicada": {},
+    "r5_imagen_corrupta": {},
+    "conservada": {
+      "D20": 6198,
+      "D40": 2243,
+      "D10": 3979,
+      "D00": 4049
+    }
+  },
+  "auditoria_imagenes": {
+    "imagenes_raw": 10506,
+    "xml_raw": 10506,
+    "imagenes_corruptas_eliminadas_r5": 0,
+    "imagenes_en_data_yolo": 10506,
+    "imagenes_fondo_r6": 2606,
+    "pct_fondo": 24.8,
+    "imagenes_fondo_sin_anotaciones_en_xml": 794,
+    "imagenes_con_tamano_xml_distinto": 0,
+    "imagenes_train": 7346,
+    "imagenes_val": 1595,
+    "imagenes_test": 1565,
+    "imagenes_calibracion": 500,
+    "calibracion_ajuste_fondo": 8,
+    "calibracion_imagenes_con_D00": 133,
+    "calibracion_imagenes_con_D10": 107,
+    "calibracion_imagenes_con_D20": 225,
+    "calibracion_imagenes_con_D40": 66
+  },
+  "imagenes_corruptas": [],
+  "yolo_dir": "/home/storyman/datasets/rdd2022_japan_yolo",
+  "entorno": {
+    "fecha": "2026-10-18T18:56:45",
+    "python": "3.13.15",
+    "plataforma": "Linux-6.6.114.1-microsoft-standard-WSL2-x86_64-with-glibc2.43",
+    "cpu": "x86_64",
+    "git_commit": "96137ac9469739942900e8fd9fdfa9ace594c628-dirty",
+    "paquetes": {
+      "ultralytics": "8.4.164",
+      "torch": "2.14.0+cu130",
+      "torchvision": "0.29.0+cu130",
+      "tensorrt": null,
+      "tensorrt-cu13": "10.16.1.11",
+      "openvino": "2026.4.0",
+      "nncf": "3.4.0",
+      "onnx": "1.23.0",
+      "onnxslim": "0.1.96",
+      "numpy": "2.4.6",
+      "scipy": "1.18.1",
+      "pandas": "3.0.6",
+      "pycocotools": "2.0.11"
+    },
+    "cuda_torch": "13.0",
+    "cudnn": 92400,
+    "gpu": "NVIDIA GeForce RTX 4060"
+  }
+}

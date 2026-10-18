@@ -630,3 +630,28 @@ Resultados (TensorRT, media ± d.e. de 3 semillas; descriptivo, la inferencia es
   con 2 conjuntos de calibración adicionales (semillas 43 y 44, mismas reglas) y reportar la variación del ΔmAP.
 - **Fase 8 (D8):** sistema sin otra carga, 3 repeticiones de la medición, registro del estado de los relojes de la
   GPU y uso exclusivo de los engines registrados (hash verificado).
+
+## 2026-10-18 — Réplica en Japón (D9): decisión y Fase J1 (datos)
+
+- Decisión del usuario: repetir el estudio completo con RDD2022-Japón como segundo dataset, con el mismo
+  procedimiento que India (antes "Japón diferido"; fila actualizada en `results/tables/protocol_deviations.csv`).
+  Documentado en CLAUDE.md (D9, pipeline J1–J9) y en el README.
+- `data/raw/RDD2022/Japan.zip` descomprimido en `data/raw/RDD2022/Japan/` (train: 10 506 imágenes + 10 506 XML;
+  test oficial: 2 627 imágenes sin etiquetas).
+- `python -m src.data.prepare_dataset --config configs/japan/data_prep.yaml` (mismas reglas que India; solo cambian
+  las rutas) y `dataset_stats`. Logs: `runs/logs/japan_prepare.log`, `runs/logs/japan_stats.log`.
+- Auditoría (`results/japan/tables/data_audit.csv`):
+  - Cajas originales 24 754: D20 6 199, D00 4 049, D44 3 995, D10 3 979, D50 3 553, D40 2 243, D43 736.
+  - Regla 1 (otras clases): 8 284 eliminadas (D44, D50, D43). Regla 3 (< 1 px): 1 caja de D20. Reglas 2, 4 y 5: 0.
+  - Conservadas 16 469: D00 4 049, D10 3 979, D20 6 198, D40 2 243.
+  - Imágenes: 10 506 en raw = 10 506 en YOLO; 0 corruptas. Fondo: 2 606 (24.8 %) = 794 sin objetos + 1 812 cuyas
+    únicas cajas eran de otras clases.
+- Partición (estratificación iterativa, semilla 42): train 7 346 / val 1 595 / test 1 565.
+  Test: D00 605, D10 591, D20 925, D40 361 instancias (D10 suficiente; en India eran 9).
+- Calibración: 500 imágenes de train (iterstrat dio 492; se agregaron 8 de fondo con semilla 42). Verificado:
+  contenidas en train, 0 en val/test, sin solapes entre splits.
+- Tamaños de imagen variables (muestra: 600×600, 540×540, 1024×1024); India era 720×720. Se lleva todo a 640 con
+  letterbox (mencionar en Métodos).
+- YOLO en `~/datasets/rdd2022_japan_yolo` (865 MB).
+- Pendiente: confirmar las decisiones propuestas en D9 (solo maestro 11m, repetir el piloto de λ, estadística por
+  dataset con Holm propio) y generalizar los scripts de las fases 2–8 para aceptar la configuración de Japón.

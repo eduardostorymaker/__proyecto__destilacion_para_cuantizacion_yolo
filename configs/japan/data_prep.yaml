@@ -1,0 +1,33 @@
+# Réplica en Japón (D9 del CLAUDE.md): MISMAS reglas que India (configs/data_prep.yaml); solo cambian las rutas.
+# Configuración de la preparación de datos (Fase J1, diseño D1 del CLAUDE.md).
+# Rutas relativas a la raíz del proyecto, salvo yolo_dir (disco de Linux, E/S rápida en WSL).
+
+raw_dir: data/raw/RDD2022/Japan/train      # contiene annotations/xmls/ e images/
+yolo_dir: ~/datasets/rdd2022_japan_yolo    # salida en formato YOLO (se regenera completa)
+splits_dir: data/splits/japan                    # listas de archivos por split (versionadas en git)
+
+# Clases del estudio; el índice YOLO es el orden de esta lista (D00=0, D10=1, D20=2, D40=3).
+# Cualquier otra etiqueta del XML se elimina (solo la caja; la imagen se conserva).
+clases: [D00, D10, D20, D40]
+
+limpieza:
+  min_lado_px: 1.0   # regla 3: cajas con ancho o alto < 1 px tras recortar se eliminan
+
+particion:
+  semilla: 42
+  proporciones: {train: 0.70, val: 0.15, test: 0.15}
+  # Estratificación iterativa multietiqueta (Sechidis et al., 2011; iterative-stratification)
+  # sobre la presencia por imagen de las 4 clases + "fondo".
+
+calibracion:
+  n_imagenes: 500    # SOLO del split train, estratificadas por clase (misma técnica)
+  semilla: 42
+
+aviso_min_instancias_test: {D10: 10}   # avisar si alguna clase queda por debajo en test
+
+salidas:
+  data_yaml: configs/japan/data.yaml
+  calib_yaml: configs/japan/calib.yaml
+  auditoria_csv: results/japan/tables/data_audit.csv
+  resumen_json: results/japan/data_prep_info.json
+  stats_csv: results/japan/tables/dataset_stats.csv

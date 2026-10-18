@@ -244,6 +244,29 @@ antes de ver los resultados reales.
 - Usar exactamente los engines registrados en `results/tables/engines.csv` (verificar el hash).
 - `results/tables/efficiency.csv`.
 
+### D9. Réplica en RDD2022-Japón (segundo dataset; decisión 2026-10-18)
+- Objetivo: repetir el estudio completo (D1–D8) con el subconjunto Japón de RDD2022 para tener dos datasets de
+  entrada y comparar si los efectos de la KD frente a la cuantización se repiten. Antes figuraba como
+  "Japón diferido" (ver `results/tables/protocol_deviations.csv`).
+- Mismo protocolo que India: mismas clases (D00, D10, D20, D40), reglas de limpieza, partición 70/15/15 con
+  estratificación iterativa (semilla 42), 500 imágenes de calibración de train, mismos hiperparámetros (D2),
+  misma CWD (D3), misma PTQ (D4), misma QAT congelada (D5), misma evaluación (D6), misma estadística (D7) y
+  misma eficiencia (D8).
+- Fuente: `data/raw/RDD2022/Japan/train` (el test oficial no tiene etiquetas). YOLO en
+  `~/datasets/rdd2022_japan_yolo`. Todo separado de India: `configs/japan/`, `data/splits/japan/`,
+  `runs/japan/`, `results/japan/` (mismos nombres de archivo que en India).
+- El test de Japón no se mira hasta su Fase J6, igual que en India.
+- Decisiones PROPUESTAS, pendientes de confirmación del usuario (deben fijarse antes de ver resultados de Japón):
+  - Maestro: solo YOLO11m (en India el 11l no superó al 11m). 
+  - λ: repetir el piloto en Japón (λ ∈ {0.5, 1.0, 2.0}, seed 0, 50 épocas, elegir por mAP@0.5:0.95 de val).
+  - Estadística: análisis D7 completo por separado en cada dataset (cada uno con su familia de 5 contrastes y su
+    corrección de Holm); la coincidencia entre datasets se reporta de forma descriptiva.
+- Diferencias de los datos (auditoría J1): Japón tiene 10 506 imágenes (1.36× India), 24.8 % de fondo (India
+  58.2 %), D10 abundante (591 instancias en test frente a 9 en India) e imágenes de 3 tamaños (600×600,
+  540×540, 1024×1024; India todas 720×720).
+- Cómputo estimado (× 1.36 sobre India): maestro 8–14 h, alumnos base ~11 h, piloto λ ~4 h, alumnos KD ~26 h,
+  QAT ~12–15 h, exportación ~2 h → **~65–75 h de GPU**.
+
 ## Pipeline (orden de ejecución)
 
 Una fase a la vez; al terminar, resumen y esperar mi confirmación.
@@ -269,6 +292,9 @@ Los entrenamientos largos los lanzo yo: preparar scripts .sh.
 - **Fase 8** Eficiencia (D8).
 - **Fase 9** Tablas III, IV y V del paper (media ± d.e.) en CSV y Markdown, y figura de mAP vs.
   método de cuantización para ambos alumnos.
+- **Réplica Japón (D9)**, después de terminar India y con el mismo código y configuración:
+  J1 datos + auditoría · J2 maestro YOLO11m · J3 alumnos base · J4 piloto λ + alumnos KD · J5 PTQ ·
+  J5b QAT · J6 evaluación · J7 estadística · J8 eficiencia · J9 tablas comparando India y Japón.
 
 ## Estructura del proyecto
 
@@ -276,7 +302,7 @@ Los entrenamientos largos los lanzo yo: preparar scripts .sh.
 proyecto/
 ├── CLAUDE.md
 ├── requirements.txt
-├── configs/        data_prep.yaml, data.yaml, calib.yaml, train.yaml, kd.yaml, qat.yaml
+├── configs/        data_prep.yaml, data.yaml, calib.yaml, train.yaml, kd.yaml, qat.yaml; japan/ (réplica)
 ├── data/           raw/, splits/   (data/yolo vive en el disco de Linux, ver D1)
 ├── src/            data/, train/, quant/, eval/, bench/, report/, utils/
 ├── scripts/        check_env.py y comandos .sh para lanzar entrenamientos
@@ -317,3 +343,5 @@ proyecto/
 - [ ] Fase 7 — Estadística
 - [ ] Fase 8 — Eficiencia
 - [ ] Fase 9 — Tablas y figuras
+- [x] J1 — Datos Japón (2026-10-18; auditoría en `results/japan/tables/data_audit.csv`)
+- [ ] J2–J9 — Réplica Japón (pendiente de confirmar decisiones de D9 y de terminar India)

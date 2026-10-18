@@ -55,6 +55,8 @@ entrenamiento.
 | 7 | Estadística (bootstrap, Holm) | pendiente |
 | 8 | Eficiencia (latencia, FPS, tamaño) | pendiente |
 | 9 | Tablas y figuras del paper | pendiente |
+| J1 | Réplica en Japón: datos y auditoría | ✅ |
+| J2–J9 | Réplica en Japón: maestro, alumnos, cuantización, evaluación, estadística | pendiente (después de India) |
 
 ### Resultados hasta ahora (validación)
 
@@ -346,6 +348,35 @@ de los engines INT8.
 
 El plan estadístico (hipótesis, α, δ y número de remuestreos) está fijado de antemano en
 [CLAUDE.md](CLAUDE.md), sección D7, y no se cambia después de ver resultados.
+
+### Réplica en RDD2022-Japón (D9)
+
+El estudio completo se repetirá con el subconjunto **Japón** de RDD2022, para tener dos datasets de entrada
+y ver si los efectos se repiten. Se usa exactamente el mismo protocolo y el mismo código que en India; solo
+cambian las rutas, que van todas a carpetas separadas: `configs/japan/`, `data/splits/japan/`, `runs/japan/`
+y `results/japan/`.
+
+**J1 — Datos (hecho):**
+
+```bash
+python -m src.data.prepare_dataset --config configs/japan/data_prep.yaml
+python -m src.data.dataset_stats   --config configs/japan/data_prep.yaml
+```
+
+| | India | Japón |
+|---|---|---|
+| Imágenes etiquetadas | 7 706 | 10 506 |
+| Partición train / val / test | 5 396 / 1 144 / 1 166 | 7 346 / 1 595 / 1 565 |
+| Cajas conservadas (D00 / D10 / D20 / D40) | 1 555 / 68 / 2 021 / 3 187 | 4 049 / 3 979 / 6 198 / 2 243 |
+| Instancias de D10 en test | 9 | 591 |
+| Imágenes de fondo | 58.2 % | 24.8 % |
+| Tamaño de imagen | 720×720 | 600×600, 540×540 y 1024×1024 |
+
+En Japón se eliminaron 8 284 cajas de otras clases (D44, D50 y D43) y 1 caja de D20 de menos de 1 px; ninguna
+imagen corrupta. Detalle en `results/japan/tables/data_audit.csv` y `results/japan/tables/dataset_stats.csv`.
+
+Las fases J2 a J9 (maestro, alumnos, cuantización, evaluación y estadística) se ejecutarán después de
+terminar India. Estimación: unas 65–75 h de GPU.
 
 ---
 
