@@ -7,6 +7,7 @@ Uso (desde la raíz del proyecto, en WSL):
     python -m src.train.train_teacher                      # YOLO11m, entrenamiento completo
     python -m src.train.train_teacher --rol maestro_l      # YOLO11l, entrenamiento completo
     python -m src.train.train_teacher --rol maestro_l --humo   # prueba rápida (1 época, 5 % de train)
+    python -m src.train.train_teacher --dataset japan          # réplica en Japón (configs/japan/train.yaml)
 """
 
 from __future__ import annotations
@@ -17,15 +18,18 @@ from ultralytics import YOLO
 
 from src.train.common import argumentos_entrenamiento, callback_metadatos, ruta_pesos_preentrenados
 from src.utils.config import cargar_yaml
+from src.utils.dataset import agregar_argumento, ruta_config
 from src.utils.repro import fijar_semillas
 
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--config", default="configs/train.yaml")
+    ap.add_argument("--config", default=None, help="por defecto, train.yaml del dataset")
+    agregar_argumento(ap)
     ap.add_argument("--rol", default="maestro", choices=["maestro", "maestro_l"], help="bloque de train.yaml")
     ap.add_argument("--humo", action="store_true", help="prueba de humo (ver sección 'humo' del yaml)")
     args = ap.parse_args()
+    args.config = args.config or ruta_config("train.yaml", args.dataset)
 
     cfg = cargar_yaml(args.config)
     m = cfg[args.rol]

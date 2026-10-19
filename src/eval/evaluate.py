@@ -32,6 +32,7 @@ from ultralytics import YOLO
 from src.eval.ece import cargar_gt, cargar_predicciones, ece, emparejar
 from src.quant.engines_registry import verificar
 from src.utils.config import cargar_yaml, resolver_ruta
+from src.utils.dataset import agregar_argumento, ruta_config
 
 CLASES = ["D00", "D10", "D20", "D40"]
 SIN_D10 = ["D00", "D20", "D40"]
@@ -151,9 +152,11 @@ def tablas(cfg: dict) -> None:
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--config", default="configs/eval.yaml")
+    ap.add_argument("--config", default=None, help="por defecto, eval.yaml del dataset")
+    agregar_argumento(ap)
     ap.add_argument("--solo-tablas", action="store_true")
     a = ap.parse_args()
+    a.config = a.config or ruta_config("eval.yaml", a.dataset)
     cfg = cargar_yaml(a.config)
 
     if not a.solo_tablas:

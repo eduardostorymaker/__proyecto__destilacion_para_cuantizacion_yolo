@@ -28,6 +28,8 @@ ajuste:
   mosaic: 0.0
   patience: 30               # sin parada temprana
   quantize: 8
+salida_exportaciones: runs/exports
+splits_dir: data/splits
 project: runs/qat            # runs/qat/qat_{base|kd}_s{seed}; control en runs/qat/mopt_{base|kd}_s{seed}
 
 # Punto de control del ajuste QAT (fijado el 2026-10-18, antes de ver resultados de la QAT):

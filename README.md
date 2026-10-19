@@ -375,8 +375,21 @@ python -m src.data.dataset_stats   --config configs/japan/data_prep.yaml
 En Japón se eliminaron 8 284 cajas de otras clases (D44, D50 y D43) y 1 caja de D20 de menos de 1 px; ninguna
 imagen corrupta. Detalle en `results/japan/tables/data_audit.csv` y `results/japan/tables/dataset_stats.csv`.
 
-Las fases J2 a J9 (maestro, alumnos, cuantización, evaluación y estadística) se ejecutarán después de
-terminar India. Estimación: unas 65–75 h de GPU.
+Las fases J2 a J9 se ejecutarán después de terminar India, con los **mismos scripts** y el argumento
+`--dataset japan`, que toma la configuración de `configs/japan/` (mismos nombres de archivo que en India):
+
+```bash
+bash scripts/train_teacher.sh --dataset japan                       # J2: maestro YOLO11m
+for s in 0 1 2; do bash scripts/train_student.sh --kd off --seed $s --dataset japan; done   # J3
+bash scripts/pilot_lambda.sh japan                                  # J4: piloto de λ (se fija λ en configs/japan/kd.yaml)
+for s in 0 1 2; do bash scripts/train_student.sh --kd on --seed $s --dataset japan; done    # J4: alumnos KD
+bash scripts/export_all.sh --dataset japan                          # J5: PTQ
+bash scripts/qat.sh --dataset japan                                 # J5b: QAT
+bash scripts/evaluate.sh --dataset japan                            # J6: evaluación en test
+```
+
+Decisiones confirmadas antes de ver resultados de Japón (D9): solo maestro YOLO11m, piloto de λ propio y
+estadística D7 completa por separado en cada dataset. Estimación: unas 65–75 h de GPU.
 
 ---
 

@@ -1,0 +1,34 @@
+# RÉPLICA EN JAPÓN (D9 del CLAUDE.md): copia de configs/kd.yaml con las MISMAS opciones; solo cambian las rutas
+# (configs/japan/, runs/japan/, results/japan/, data/splits/japan/).
+# Destilación CWD (diseño D3 del CLAUDE.md). Solo la usa el alumno KD.
+# Pérdida: L = L_det + λ · L_CWD  (L_CWD sumada sobre P3, P4, P5 = entradas de la cabeza Detect).
+#
+# Referencia de la fórmula (adaptada, no copiada): MMRazor, ChannelWiseDivergence
+#   https://github.com/open-mmlab/mmrazor/blob/0919f692878fe0037ff94bc90e46eed721c64a39/mmrazor/models/losses/cwd.py
+#   Shu et al., "Channel-wise Knowledge Distillation for Dense Prediction", ICCV 2021.
+
+maestro: runs/japan/teacher/teacher_s0/weights/best.pt   # YOLO11m (D9: único maestro en Japón)
+
+tau: 1.0
+lambda: null          # se fija tras el piloto de Japón (D9); obligatorio para las corridas finales
+
+# Escala: la pérdida de detección de Ultralytics se multiplica por el tamaño del batch;
+# L_CWD (por imagen, como en MMRazor) se multiplica igual para que λ sea relativo a L_det.
+
+piloto:
+  lambdas: [0.5, 1.0, 2.0]
+  seed: 0
+  epocas: 50
+  project: runs/japan/pilot
+  # name = pilot_kd_l{λ}_s0
+  # Regla (fijada antes de ver resultados): se elige el λ cuyo best.pt tenga la mayor mAP@0.5:0.95 en
+  # VALIDACIÓN (nunca test), revalidando todos con el mismo procedimiento que la selección de maestro.
+  revalidacion: {split: val, imgsz: 640, batch: 8, conf: 0.001, iou: 0.7}
+  tabla: results/japan/tables/pilot_lambda.csv
+  figura: results/japan/figures/pilot_lambda.png
+
+humo:
+  lambda: 1.0
+  epochs: 2
+  fraction: 0.05
+  project: runs/japan/smoke

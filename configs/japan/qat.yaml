@@ -1,0 +1,58 @@
+# RÉPLICA EN JAPÓN (D9 del CLAUDE.md): copia de configs/qat.yaml con las MISMAS opciones; solo cambian las rutas
+# (configs/japan/, runs/japan/, results/japan/, data/splits/japan/).
+# Fase 5b: QAT INT8 con NVIDIA ModelOpt (diseño D5 del CLAUDE.md), sobre la QAT integrada en Ultralytics
+# 8.4.164 (train(quantize=8)). Dos cambios respecto de Ultralytics para cumplir D5:
+#   - la calibración inicial usa las 500 imágenes de configs/calib.yaml, sin aumentación (Ultralytics usa
+#     8 lotes aumentados del cargador de entrenamiento);
+#   - antes del ajuste fino se guarda y exporta el modelo solo calibrado ("ModelOpt PTQ"), como control.
+# Calibrador de ModelOpt (mtq.INT8_DEFAULT_CFG): algoritmo "max"; activaciones por tensor y pesos por canal,
+# 8 bits. Como Ultralytics, se dejan en float las capas de salida de la cabeza y la DFL.
+
+alumnos:
+  student_base_s0: runs/japan/students/student_base_s0/weights/best.pt
+  student_base_s1: runs/japan/students/student_base_s1/weights/best.pt
+  student_base_s2: runs/japan/students/student_base_s2/weights/best.pt
+  student_kd_s0:   runs/japan/students/student_kd_s0/weights/best.pt
+  student_kd_s1:   runs/japan/students/student_kd_s1/weights/best.pt
+  student_kd_s2:   runs/japan/students/student_kd_s2/weights/best.pt
+
+calibracion:
+  data: configs/japan/calib.yaml   # mismas 500 imágenes de TRAIN que la PTQ (clave 'val' de calib.yaml)
+  imgsz: 640
+  batch: 8                   # todas las imágenes se usan (63 lotes); sin aumentación, letterbox cuadrado
+
+# Ajuste fino: SOLO pérdida de detección (sin CWD) en ambos alumnos. El resto, igual que configs/train.yaml.
+ajuste:
+  epochs: 30
+  lr0: 0.001
+  lrf: 0.01
+  warmup_epochs: 0
+  mosaic: 0.0
+  patience: 30               # sin parada temprana
+  quantize: 8
+salida_exportaciones: runs/japan/exports
+splits_dir: data/splits/japan
+project: runs/japan/qat            # runs/qat/qat_{base|kd}_s{seed}; control en runs/qat/mopt_{base|kd}_s{seed}
+
+# Punto de control del ajuste QAT (fijado el 2026-10-18, antes de ver resultados de la QAT):
+# best = best.pt según el fitness de Ultralytics en VALIDACIÓN (0.1·mAP@0.5 + 0.9·mAP@0.5:0.95), igual que los
+# alumnos base y KD (D2). Alternativa no elegida: last (última época).
+punto_control: best
+
+# CONFIGURACIÓN CONGELADA (2026-10-18). La prueba de humo se evaluó solo en VALIDACIÓN; el test de la QAT no se
+# mira hasta evaluarla con src/eval/evaluate.py (misma configuración que la Fase 6).
+
+exportacion:
+  imgsz: 640
+  batch: 1
+  dynamic: false
+  simplify: true
+
+tablas:
+  exportaciones: results/japan/tables/exports.csv     # se agregan filas tensorrt/mopt_int8 y tensorrt/qat_int8
+  capas_engine: results/japan/tables/engine_layers.csv
+
+humo:
+  epochs: 1
+  fraction: 0.05
+  project: runs/japan/smoke

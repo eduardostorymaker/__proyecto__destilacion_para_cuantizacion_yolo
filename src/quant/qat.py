@@ -44,6 +44,7 @@ from src.quant.engines_registry import registrar
 from src.quant.export_all import agregar_fila, leer_hechos, tamano_mb, verificar_calibracion
 from src.train.common import argumentos_entrenamiento, callback_metadatos
 from src.utils.config import cargar_yaml, resolver_ruta
+from src.utils.dataset import agregar_argumento, ruta_config
 from src.utils.repro import fijar_semillas, info_entorno
 
 
@@ -109,15 +110,18 @@ def exportar_qdq(pt: Path, destino: Path, ex: dict, calib: Path) -> tuple[Path, 
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--config", default="configs/qat.yaml")
+    ap.add_argument("--config", default=None, help="por defecto, qat.yaml del dataset")
+    agregar_argumento(ap)
     ap.add_argument("--alumnos", nargs="*")
     ap.add_argument("--humo", action="store_true")
     a = ap.parse_args()
 
-    cfg, ctrain = cargar_yaml(a.config), cargar_yaml("configs/train.yaml")
+    a.config = a.config or ruta_config("qat.yaml", a.dataset)
+    cfg_train = ruta_config("train.yaml", a.dataset)
+    cfg, ctrain = cargar_yaml(a.config), cargar_yaml(cfg_train)
     cal, ex = cfg["calibracion"], cfg["exportacion"]
     calib = resolver_ruta(cal["data"])
-    print(f"Calibración verificada: {verificar_calibracion(calib)} imágenes de train, ninguna de val/test",
+    print(f"Calibración verificada: {verificar_calibracion(calib, cfg['splits_dir'])} imágenes de train, ninguna de val/test",
           flush=True)
 
     # La QAT de Ultralytics llama a prepare_qat(model, loader, preprocess); se sustituye por la calibración de D5
@@ -127,7 +131,7 @@ def main() -> None:
     sufijo = "_humo" if a.humo else ""
     t_exp, t_capas = (resolver_ruta(cfg["tablas"][k]) for k in ("exportaciones", "capas_engine"))
     hechos = set() if a.humo else leer_hechos(t_exp)
-    salida_exp = resolver_ruta("runs/exports") if not a.humo else proyecto / "exports"
+    salida_exp = resolver_ruta(cfg["salida_exportaciones"]) if not a.humo else proyecto / "exports"
 
     for nombre, pt in cfg["alumnos"].items():
         if a.alumnos and nombre not in a.alumnos:
@@ -159,13 +163,13 @@ def main() -> None:
                 kw.update(epochs=cfg["humo"]["epochs"], fraction=cfg["humo"]["fraction"])
             modelo = YOLO(str(pt))
             modelo.add_callback("on_pretrain_routine_start",
-                                callback_metadatos([a.config, "configs/train.yaml"],
+                                callback_metadatos([a.config, cfg_train],
                                                    {"rol": "qat", "origen": str(pt), "humo": a.humo}))
             t0 = time.perf_counter()
             modelo.train(**kw)
             horas = (time.perf_counter() - t0) / 3600
             if cfg["punto_control"] not in ("best", "last"):
-                raise ValueError("configs/qat.yaml: punto_control debe ser 'best' o 'last'")
+                raise ValueError(f"{a.config}: punto_control debe ser 'best' o 'last'")
             best = Path(modelo.trainer.best if cfg["punto_control"] == "best" else modelo.trainer.last)
             eng, seg = exportar_qdq(best, salida_exp / f"{nombre}_tensorrt_qat_int8", ex, calib)
             (eng.parent / "entorno.json").write_text(json.dumps(info_entorno() | {"origen": str(best),

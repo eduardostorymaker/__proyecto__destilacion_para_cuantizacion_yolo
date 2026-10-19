@@ -27,6 +27,7 @@ from ultralytics import YOLO
 from src.quant.engine_layers import contar_capas
 from src.quant.engines_registry import registrar
 from src.utils.config import cargar_yaml, resolver_ruta
+from src.utils.dataset import agregar_argumento, ruta_config
 from src.utils.repro import info_entorno
 
 CAMPOS_EXP = ["modelo", "formato", "precision", "ruta", "MB", "segundos", "calibracion"]
@@ -43,7 +44,7 @@ class CapturaLog(logging.Handler):
         self.mensajes.append(record.getMessage())
 
 
-def verificar_calibracion(calib_yaml: Path) -> int:
+def verificar_calibracion(calib_yaml: Path, splits_dir: str = "data/splits") -> int:
     """Comprueba que la lista de calibración esté en train y fuera de val/test; devuelve su tamaño."""
     c = cargar_yaml(calib_yaml)
     raiz = Path(c["path"])
@@ -52,7 +53,7 @@ def verificar_calibracion(calib_yaml: Path) -> int:
     if nombres["train"] != nombres["val"]:
         raise RuntimeError("calib.yaml: 'train' y 'val' deben apuntar a la misma lista de calibración")
     calib = nombres["val"]  # el exportador de Ultralytics calibra con la clave 'val'
-    splits = {s: {l.strip() for l in open(resolver_ruta(f"data/splits/{s}.txt"), encoding="utf-8") if l.strip()}
+    splits = {s: {l.strip() for l in open(resolver_ruta(f"{splits_dir}/{s}.txt"), encoding="utf-8") if l.strip()}
               for s in ("train", "val", "test")}
     if not calib <= splits["train"] or calib & (splits["val"] | splits["test"]):
         raise RuntimeError("La lista de calibración no está contenida en train o toca val/test")
@@ -114,14 +115,16 @@ def exportar(pt: Path, destino: Path, formato: str, prec: str, ex: dict, calib: 
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--config", default="configs/quant.yaml")
+    ap.add_argument("--config", default=None, help="por defecto, quant.yaml del dataset")
+    agregar_argumento(ap)
     ap.add_argument("--modelos", nargs="*", help="subconjunto de claves de 'modelos' (por defecto, todos)")
     a = ap.parse_args()
+    a.config = a.config or ruta_config("quant.yaml", a.dataset)
 
     cfg = cargar_yaml(a.config)
     ex = cfg["exportacion"]
     calib = resolver_ruta(ex["calib_data"])
-    n_calib = verificar_calibracion(calib)
+    n_calib = verificar_calibracion(calib, cfg["splits_dir"])
     print(f"Calibración verificada: {n_calib} imágenes de train, ninguna de val/test ({calib})", flush=True)
 
     salida = resolver_ruta(cfg["salida"])

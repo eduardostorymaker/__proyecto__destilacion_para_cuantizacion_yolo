@@ -655,3 +655,23 @@ Resultados (TensorRT, media ± d.e. de 3 semillas; descriptivo, la inferencia es
 - YOLO en `~/datasets/rdd2022_japan_yolo` (865 MB).
 - Pendiente: confirmar las decisiones propuestas en D9 (solo maestro 11m, repetir el piloto de λ, estadística por
   dataset con Holm propio) y generalizar los scripts de las fases 2–8 para aceptar la configuración de Japón.
+
+## 2026-10-18 — D9 confirmada
+
+- El usuario confirma las tres propuestas de D9, antes de cualquier resultado de Japón: maestro solo YOLO11m;
+  repetir el piloto de λ en Japón; estadística D7 completa por separado en cada dataset (Holm propio por dataset),
+  coincidencia entre datasets de forma descriptiva.
+- La QAT de India aún no se ha lanzado.
+
+## 2026-10-18 — Scripts generalizados para la réplica en Japón
+
+- `src/utils/dataset.py`: argumento `--dataset {india,japan}` (por defecto india) en train_teacher, train_student,
+  select_lambda, export_all, qat y evaluate; `scripts/pilot_lambda.sh` acepta `japan` como primer argumento.
+  India usa `configs/*.yaml`; Japón, `configs/japan/*.yaml` (mismos nombres y opciones; solo cambian las rutas a
+  `runs/japan/`, `results/japan/`, `data/splits/japan/`). `configs/japan/train.yaml` sin maestro YOLO11l;
+  `configs/japan/kd.yaml` con λ = null hasta su piloto.
+- Rutas que estaban fijas en el código pasan a la configuración: `splits_dir` (quant.yaml, qat.yaml) y
+  `salida_exportaciones` (qat.yaml); en India conservan los valores anteriores.
+- Pruebas: India sin cambios (export_all salta todo, consistencia idéntica, QAT verifica calibración); Japón: humo del
+  maestro y del alumno base OK (`runs/japan/smoke/`, data = configs/japan/data.yaml); calibración de la QAT de Japón
+  verificada contra `data/splits/japan`. La prueba de humo del alumno KD de Japón se hará tras J2 (necesita su maestro).

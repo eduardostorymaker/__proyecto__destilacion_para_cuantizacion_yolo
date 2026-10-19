@@ -8,6 +8,7 @@ Uso (desde la raíz del proyecto, en WSL):
     python -m src.train.train_student --kd on  --piloto 1.0             # piloto de λ  → pilot_kd_l1.0_s0
     python -m src.train.train_student --kd on  --seed 0 --humo          # prueba de humo
     python -m src.train.train_student --kd on  --seed 1 --reanudar      # retoma student_kd_s1 desde last.pt
+    python -m src.train.train_student --kd off --seed 0 --dataset japan # réplica en Japón (configs/japan/)
 """
 
 from __future__ import annotations
@@ -19,9 +20,9 @@ from ultralytics import YOLO
 from src.train.common import argumentos_entrenamiento, callback_metadatos, ruta_pesos_preentrenados
 from src.train.cwd import crear_trainer_cwd
 from src.utils.config import cargar_yaml, resolver_ruta
+from src.utils.dataset import agregar_argumento, ruta_config
 from src.utils.repro import fijar_semillas
 
-CFG_TRAIN, CFG_KD = "configs/train.yaml", "configs/kd.yaml"
 
 
 def main() -> None:
@@ -31,7 +32,9 @@ def main() -> None:
     ap.add_argument("--piloto", type=float, metavar="LAMBDA", help="corrida del piloto de λ (solo --kd on)")
     ap.add_argument("--humo", action="store_true")
     ap.add_argument("--reanudar", action="store_true", help="retoma la corrida desde su weights/last.pt")
+    agregar_argumento(ap)
     args = ap.parse_args()
+    CFG_TRAIN, CFG_KD = ruta_config("train.yaml", args.dataset), ruta_config("kd.yaml", args.dataset)
 
     cfg, kd = cargar_yaml(CFG_TRAIN), cargar_yaml(CFG_KD)
     usa_kd = args.kd == "on"
@@ -50,7 +53,7 @@ def main() -> None:
         lam = (kd["humo"]["lambda"] if args.humo else kd["lambda"]) if usa_kd else None
         nombre = f"student_{'kd' if usa_kd else 'base'}_s{seed}"
     if usa_kd and lam is None:
-        raise ValueError("configs/kd.yaml: 'lambda' es null; fíjalo tras el piloto (Fase 4b)")
+        raise ValueError(f"{CFG_KD}: 'lambda' es null; fíjalo tras el piloto (Fase 4b)")
 
     fijar_semillas(seed)
     kwargs = argumentos_entrenamiento(cfg, "alumno", seed, nombre, args.humo)

@@ -256,11 +256,13 @@ antes de ver los resultados reales.
   `~/datasets/rdd2022_japan_yolo`. Todo separado de India: `configs/japan/`, `data/splits/japan/`,
   `runs/japan/`, `results/japan/` (mismos nombres de archivo que en India).
 - El test de Japón no se mira hasta su Fase J6, igual que en India.
-- Decisiones PROPUESTAS, pendientes de confirmación del usuario (deben fijarse antes de ver resultados de Japón):
-  - Maestro: solo YOLO11m (en India el 11l no superó al 11m). 
-  - λ: repetir el piloto en Japón (λ ∈ {0.5, 1.0, 2.0}, seed 0, 50 épocas, elegir por mAP@0.5:0.95 de val).
+- Decisiones CONFIRMADAS por el usuario el 2026-10-18, antes de cualquier resultado de Japón:
+  - Maestro: solo YOLO11m (en India el 11l no superó al 11m).
+  - λ: se repite el piloto en Japón (λ ∈ {0.5, 1.0, 2.0}, seed 0, 50 épocas, elegir por mAP@0.5:0.95 de val).
   - Estadística: análisis D7 completo por separado en cada dataset (cada uno con su familia de 5 contrastes y su
     corrección de Holm); la coincidencia entre datasets se reporta de forma descriptiva.
+- Ejecución: todos los scripts aceptan `--dataset japan` (por defecto `india`), que toma la configuración de
+  `configs/japan/` en lugar de `configs/`.
 - Diferencias de los datos (auditoría J1): Japón tiene 10 506 imágenes (1.36× India), 24.8 % de fondo (India
   58.2 %), D10 abundante (591 instancias en test frente a 9 en India) e imágenes de 3 tamaños (600×600,
   540×540, 1024×1024; India todas 720×720).
@@ -344,4 +346,4 @@ proyecto/
 - [ ] Fase 8 — Eficiencia
 - [ ] Fase 9 — Tablas y figuras
 - [x] J1 — Datos Japón (2026-10-18; auditoría en `results/japan/tables/data_audit.csv`)
-- [ ] J2–J9 — Réplica Japón (pendiente de confirmar decisiones de D9 y de terminar India)
+- [ ] J2–J9 — Réplica Japón (decisiones de D9 confirmadas 2026-10-18; se ejecuta después de India)

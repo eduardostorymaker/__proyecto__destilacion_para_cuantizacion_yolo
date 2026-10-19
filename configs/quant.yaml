@@ -23,6 +23,7 @@ exportacion:
   simplify: true
   calib_data: configs/calib.yaml   # 500 imágenes de TRAIN; nunca val ni test
 
+splits_dir: data/splits             # para verificar que la calibración solo usa train
 salida: runs/exports               # runs/exports/{modelo}_s{seed}_{formato}_{precision}/
 
 tablas:

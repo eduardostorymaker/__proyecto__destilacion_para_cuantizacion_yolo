@@ -1,0 +1,33 @@
+# RÉPLICA EN JAPÓN (D9 del CLAUDE.md): copia de configs/quant.yaml con las MISMAS opciones; solo cambian las rutas
+# (configs/japan/, runs/japan/, results/japan/, data/splits/japan/).
+# Fase 5: cuantización post-entrenamiento (PTQ), diseño D4 del CLAUDE.md.
+# Cada precisión se exporta POR SEPARADO desde best.pt (FP32); no hay cadena FP32 → FP16 → INT8.
+
+modelos:
+  student_base_s0: runs/japan/students/student_base_s0/weights/best.pt
+  student_base_s1: runs/japan/students/student_base_s1/weights/best.pt
+  student_base_s2: runs/japan/students/student_base_s2/weights/best.pt
+  student_kd_s0:   runs/japan/students/student_kd_s0/weights/best.pt
+  student_kd_s1:   runs/japan/students/student_kd_s1/weights/best.pt
+  student_kd_s2:   runs/japan/students/student_kd_s2/weights/best.pt
+  teacher_s0:      runs/japan/teacher/teacher_s0/weights/best.pt      # YOLO11m, referencia
+
+# Precisiones por motor. El maestro solo en GPU (D4); su FP32 se exporta porque ΔmAP se calcula
+# dentro del mismo motor (D6): TRT FP32 − TRT {FP16, INT8}.
+precisiones:
+  alumnos: {tensorrt: [fp32, fp16, int8], openvino: [fp32, int8]}
+  maestro: {tensorrt: [fp32, fp16, int8]}
+
+exportacion:
+  imgsz: 640
+  batch: 1
+  dynamic: false
+  simplify: true
+  calib_data: configs/japan/calib.yaml   # 500 imágenes de TRAIN; nunca val ni test
+
+splits_dir: data/splits/japan             # para verificar que la calibración solo usa train
+salida: runs/japan/exports               # runs/exports/{modelo}_s{seed}_{formato}_{precision}/
+
+tablas:
+  exportaciones: results/japan/tables/exports.csv
+  capas_engine: results/japan/tables/engine_layers.csv

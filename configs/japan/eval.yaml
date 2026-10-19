@@ -1,0 +1,30 @@
+# RÉPLICA EN JAPÓN (D9 del CLAUDE.md): copia de configs/eval.yaml con las MISMAS opciones; solo cambian las rutas
+# (configs/japan/, runs/japan/, results/japan/, data/splits/japan/).
+# Fase 6: evaluación en TEST (diseño D6 del CLAUDE.md).
+
+data: configs/japan/data.yaml
+split: test
+imgsz: 640
+batch: 1
+conf: 0.001
+iou: 0.7
+rect: false            # letterbox cuadrado 640×640 para TODOS los modelos, incluido el .pt FP32 (D6)
+
+# Modelos: los .pt FP32 de configs/quant.yaml (control de consistencia) + todas las exportaciones de
+# results/tables/exports.csv (Fase 5).
+quant_config: configs/japan/quant.yaml
+exportaciones: results/japan/tables/exports.csv
+
+ece:
+  conf_min: 0.25       # solo detecciones con confianza ≥ 0.25
+  iou_min: 0.5         # emparejamiento greedy por confianza con cajas reales, IoU ≥ 0.5
+  intervalos: 15       # intervalos de igual ancho sobre [rango]
+  rango: [0.0, 1.0]
+
+consistencia_max_dmap50: 0.002   # |mAP@0.5(.pt FP32) − mAP@0.5(TRT FP32)| debe ser menor (D6)
+
+salida: runs/japan/eval                # runs/eval/{modelo}_{formato}_{precision}/predictions.json
+tablas:
+  metricas: results/japan/metrics.csv
+  deltas: results/japan/tables/delta_map.csv
+  consistencia: results/japan/tables/consistency_pt_vs_trt.csv

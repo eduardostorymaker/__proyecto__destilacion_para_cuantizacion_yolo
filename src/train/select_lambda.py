@@ -26,6 +26,7 @@ import matplotlib.pyplot as plt  # noqa: E402
 from ultralytics import YOLO  # noqa: E402
 
 from src.utils.config import RAIZ, cargar_yaml, resolver_ruta  # noqa: E402
+from src.utils.dataset import agregar_argumento, ruta_config  # noqa: E402
 
 COLORES = ["#2a78d6", "#eb6834", "#1baf7a"]  # paleta categórica de referencia, orden fijo
 
@@ -44,9 +45,11 @@ def leer_curvas(run) -> dict:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--humo", action="store_true")
+    agregar_argumento(ap)
     a = ap.parse_args()
 
-    kd = cargar_yaml("configs/kd.yaml")
+    kd = cargar_yaml(ruta_config("kd.yaml", a.dataset))
+    data = cargar_yaml(ruta_config("train.yaml", a.dataset))["comun"]["data"]
     p, rv = kd["piloto"], kd["piloto"]["revalidacion"]
     base = resolver_ruta(kd["humo"]["project"] if a.humo else p["project"])
     sufijo = "_humo" if a.humo else ""
@@ -58,7 +61,7 @@ def main() -> None:
         curvas[lam] = c
         pendiente = linregress(c["ep"], c["cwd"]).slope if len(c["ep"]) > 2 else c["cwd"][-1] - c["cwd"][0]
         m = YOLO(run / "weights" / "best.pt")
-        v = m.val(data=str(resolver_ruta("configs/data.yaml")), split=rv["split"], imgsz=rv["imgsz"],
+        v = m.val(data=str(resolver_ruta(data)), split=rv["split"], imgsz=rv["imgsz"],
                   batch=rv["batch"], conf=rv["conf"], iou=rv["iou"], plots=False, verbose=False,
                   project="/tmp/val_pilot", name=f"l{lam}{sufijo}", exist_ok=True)
         ap50 = {m.names[i]: x for i, x in zip(v.box.ap_class_index, v.box.ap50)}
