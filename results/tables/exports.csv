@@ -32,3 +32,15 @@ student_kd_s2,openvino,int8,runs/exports/student_kd_s2_openvino_int8/best_int8_o
 teacher_s0,tensorrt,fp32,runs/exports/teacher_s0_tensorrt_fp32/best.engine,90.15,91.1,
 teacher_s0,tensorrt,fp16,runs/exports/teacher_s0_tensorrt_fp16/best.engine,41.48,245.5,
 teacher_s0,tensorrt,int8,runs/exports/teacher_s0_tensorrt_int8/best.engine,21.92,428.9,[34m[1mTensorRT:[0m collecting INT8 calibration images from 'data=/mnt/d/1-Personal/5-Studies/MaestriaIA/S2/Vision de computadora/proyecto_yolo/Codigo/configs/calib.yaml'
+student_base_s0,tensorrt,mopt_int8,runs/exports/student_base_s0_tensorrt_mopt_int8/best.engine,4.56,224.7,"ModelOpt max, configs/calib.yaml"
+student_base_s0,tensorrt,qat_int8,runs/exports/student_base_s0_tensorrt_qat_int8/best.engine,4.43,201.5,"ModelOpt max + QAT, configs/calib.yaml"
+student_base_s1,tensorrt,mopt_int8,runs/exports/student_base_s1_tensorrt_mopt_int8/best.engine,4.35,197.8,"ModelOpt max, configs/calib.yaml"
+student_base_s1,tensorrt,qat_int8,runs/exports/student_base_s1_tensorrt_qat_int8/best.engine,4.6,200.4,"ModelOpt max + QAT, configs/calib.yaml"
+student_base_s2,tensorrt,mopt_int8,runs/exports/student_base_s2_tensorrt_mopt_int8/best.engine,4.54,198.5,"ModelOpt max, configs/calib.yaml"
+student_base_s2,tensorrt,qat_int8,runs/exports/student_base_s2_tensorrt_qat_int8/best.engine,4.5,197.1,"ModelOpt max + QAT, configs/calib.yaml"
+student_kd_s0,tensorrt,mopt_int8,runs/exports/student_kd_s0_tensorrt_mopt_int8/best.engine,4.49,195.1,"ModelOpt max, configs/calib.yaml"
+student_kd_s0,tensorrt,qat_int8,runs/exports/student_kd_s0_tensorrt_qat_int8/best.engine,4.57,193.7,"ModelOpt max + QAT, configs/calib.yaml"
+student_kd_s1,tensorrt,mopt_int8,runs/exports/student_kd_s1_tensorrt_mopt_int8/best.engine,4.51,197.1,"ModelOpt max, configs/calib.yaml"
+student_kd_s1,tensorrt,qat_int8,runs/exports/student_kd_s1_tensorrt_qat_int8/best.engine,4.51,197.6,"ModelOpt max + QAT, configs/calib.yaml"
+student_kd_s2,tensorrt,mopt_int8,runs/exports/student_kd_s2_tensorrt_mopt_int8/best.engine,4.48,196.6,"ModelOpt max, configs/calib.yaml"
+student_kd_s2,tensorrt,qat_int8,runs/exports/student_kd_s2_tensorrt_qat_int8/best.engine,4.35,195.6,"ModelOpt max + QAT, configs/calib.yaml"

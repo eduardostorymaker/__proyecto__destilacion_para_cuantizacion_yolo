@@ -340,7 +340,7 @@ proyecto/
 - [x] Fase 3 — Alumnos base (2026-10-01; val mAP@0.5 0.3415 ± 0.0215; alerta: maestro apenas mejor)
 - [x] Fase 4b — Piloto λ (λ = 1.0) + alumnos KD (2026-10-17; val mAP@0.5 0.3467 ± 0.0079; check_kd OK)
 - [x] Fase 5 — PTQ (2026-10-18; 33 exportaciones TRT/OV; ~65 % de capas de cómputo en INT8)
-- [ ] Fase 5b — QAT (implementada, humo OK 2026-10-18; lanzar `bash scripts/qat.sh`, ~9–11 h)
+- [x] Fase 5b — QAT (2026-10-19; 6 controles ModelOpt PTQ + 6 QAT, evaluados en test con `src/eval/evaluate.py`)
 - [x] Fase 6 — Evaluación (2026-10-18, PTQ: `results/metrics.csv`; los modelos QAT se evaluarán con el mismo `src/eval/evaluate.py`)
 - [ ] Fase 7 — Estadística
 - [ ] Fase 8 — Eficiencia

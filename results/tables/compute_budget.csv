@@ -6,10 +6,12 @@ fase,concepto,corridas,horas_gpu,fuente
 3 — Alumnos base,student_base_s0..s2,3,8.18,medido (runs/students/student_base_s*/results.csv)
 4b — Piloto de λ,"pilot_kd_l{0.5,1.0,2.0}_s0",3,3.13,medido (runs/pilot/pilot_kd_*/results.csv)
 4b — Alumnos KD,student_kd_s0..s2,3,18.86,medido (runs/students/student_kd_s*/results.csv)
+5b — QAT,"qat_{base,kd}_s0..s2 (ajuste fino)",6,6.42,medido (runs/qat/qat_*/results.csv)
 5 — Exportación PTQ,33 exportaciones,33,1.35,medido (results/tables/exports.csv)
+5b — Exportación QAT y control,12 exportaciones,12,0.67,medido (results/tables/exports.csv)
 1b — Pruebas de tiempo,maestro FP32 (detenido en la época 2) + forward del maestro,,0.5,estimado (LOG 2026-09-28: época 1 de 947 s y época 2 al 79 %)
 6 — Evaluación,40 evaluaciones en test (7 .pt + 33 exportaciones),,0.3,"estimado (LOG 2026-10-18: ~10 s por evaluación en GPU, más lento en CPU)"
 Exploración,ptq_check (9 engines + 15 evaluaciones en val),,1.0,estimado (LOG 2026-10-03)
 Exploración,diagnóstico del maestro INT8 (OV + evaluaciones + activaciones),,0.2,estimado (LOG 2026-10-18)
 Pruebas de humo,"maestros, alumnos, KD, piloto, QAT",,0.3,estimado (suma aproximada de las pruebas de humo)
-TOTAL,,,48.1,
+TOTAL,,,55.2,

@@ -675,3 +675,31 @@ Resultados (TensorRT, media ± d.e. de 3 semillas; descriptivo, la inferencia es
 - Pruebas: India sin cambios (export_all salta todo, consistencia idéntica, QAT verifica calibración); Japón: humo del
   maestro y del alumno base OK (`runs/japan/smoke/`, data = configs/japan/data.yaml); calibración de la QAT de Japón
   verificada contra `data/splits/japan`. La prueba de humo del alumno KD de Japón se hará tras J2 (necesita su maestro).
+
+## 2026-10-19 — Fase 5b: QAT completada y evaluada en test
+
+- `bash scripts/qat.sh` (log `runs/logs/qat_20261018_201933.log`), terminó con `FIN`. 6 controles "ModelOpt PTQ" +
+  6 ajustes QAT (30 épocas, ~1.07 h cada uno; estimado 1.5–2 h) → 12 engines registrados con SHA-256 en
+  `results/tables/engines.csv` y filas `mopt_int8` / `qat_int8` en `results/tables/exports.csv`. Sin NaN.
+- Punto de control (regla congelada: best.pt por validación): épocas 1 (base_s0), 25 (base_s1), 1 (base_s2),
+  4 (kd_s0), 20 (kd_s1), 30 (kd_s2). En base_s0 y base_s2 la mAP de val baja después de la época 1
+  (base_s0: 0.360 → 0.343 en la época 30): el ajuste largo con lr0 0.001 y sin mosaico no mejora a todos.
+- `bash scripts/evaluate.sh` (12 evaluaciones nuevas en test, misma configuración que la Fase 6; hashes verificados).
+  Consistencia .pt vs TRT FP32 sin cambios (OK en los 7 modelos).
+
+Resultados en test, TensorRT (Δ = FP32 − cuantizado; media ± d.e. de 3 semillas; descriptivo, inferencia en Fase 7):
+
+| | Δ mAP@0.5 PTQ INT8 (Ultralytics) | Δ mAP@0.5 ModelOpt PTQ (control) | Δ mAP@0.5 QAT INT8 | Δ AP@0.5 D40 QAT | ECE QAT INT8 |
+|---|---|---|---|---|---|
+| Base | 0.0351 ± 0.0091 | 0.0062 ± 0.0092 | 0.0064 ± 0.0032 | 0.0070 ± 0.0015 | 0.0770 |
+| KD | 0.0314 ± 0.0068 | 0.0129 ± 0.0031 | 0.0112 ± 0.0090 | 0.0199 ± 0.0019 | 0.0850 |
+
+- mAP@0.5 QAT INT8 en test: base 0.3223 / 0.3058 / 0.2833 (media 0.3038); KD 0.3078 / 0.3003 / 0.3071 (media 0.3051).
+- Por semilla, D = Δ_base − Δ_KD (QAT, mAP@0.5): −0.0014, −0.0115, −0.0014 (0/3 a favor de KD).
+- H3 (vista previa): mAP@0.5(KD + PTQ INT8) − mAP@0.5(base + QAT INT8) por semilla: −0.0332, −0.0217, −0.0019
+  (media −0.019, por debajo de −δ = −0.010).
+- **Hallazgo:** casi toda la ganancia viene del esquema de cuantización de ModelOpt (Q/DQ explícito, pesos por canal),
+  no del ajuste fino: el control "ModelOpt PTQ" ya pierde solo 0.006–0.013, frente a 0.031–0.035 de la PTQ implícita
+  de TensorRT vía Ultralytics; la QAT apenas cambia eso. La QAT sí reduce el ECE respecto de FP32 (−0.011 a −0.013).
+- Presupuesto de cómputo actualizado (`results/tables/compute_budget.csv`).
+- **Resultado: Fase 5b completada.**
