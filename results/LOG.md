@@ -724,3 +724,38 @@ Resultados en test, TensorRT (Δ = FP32 − cuantizado; media ± d.e. de 3 semil
   evaluados solo para generarlos (comprobando que la mAP coincide con metrics.csv). `bootstrap.py` usa esos
   aciertos si existen; el ECE sigue usando predictions.json (diferencia por redondeo ≤ 4·10⁻⁶).
 - Pendiente: confirmación del usuario para reevaluar (`bash scripts/evaluate.sh --solo-stats`) y correr el bootstrap.
+
+## 2026-10-20 — Fe de erratas: criterio de best.pt (fitness de Ultralytics 8.4.164)
+
+- En Ultralytics 8.4.164 el fitness que decide best.pt y la parada temprana es **solo mAP@0.5:0.95**
+  (`DetMetrics.fitness`, pesos [P, R, mAP@0.5, mAP@0.5:0.95] = [0, 0, 0, 1]), no 0.1·mAP@0.5 + 0.9·mAP@0.5:0.95 como
+  se usó en los análisis de este LOG. Los **modelos usados son correctos** (best.pt lo elige Ultralytics) y las
+  revalidaciones de best.pt siguen valiendo; solo cambian algunas "épocas de best" reportadas:
+  - student_base_s0 (India): best.pt = época **198** (se reportó 202). En esa época, val mAP@0.5 0.3649 /
+    mAP@0.5:0.95 0.1515 (se reportó 0.3670 / 0.1514).
+  - qat_kd_s2 (India): best.pt = época **5** (se reportó 30).
+  - Las demás corridas de India coinciden (maestros 148 y 105; base_s1 238, base_s2 114; KD 157, 274, 113; piloto 47,
+    49, 49; QAT 1, 25, 1, 4, 20).
+- Corregidos el comentario de `configs/qat.yaml` (y `configs/japan/qat.yaml`) y la tabla de la Fase 3 del README.
+
+## 2026-10-20 — J2: maestro YOLO11m de Japón
+
+- `bash scripts/train_teacher.sh --dataset japan` (log `runs/logs/teacher_20261019_220716_dataset_japan.log`) →
+  `runs/japan/teacher/teacher_s0`. 131 épocas en 5.6 h, sin NaN. EarlyStopping (patience 50): **best.pt = época 81**,
+  last.pt = época 131.
+- Validación (best.pt revalidado: imgsz 640, batch 8, conf 0.001, iou 0.7):
+
+| Clase | AP@0.5 | AP@0.5:0.95 |
+|---|---|---|
+| **Todas** | **0.5711** | **0.2765** |
+| D00 | 0.5515 | 0.2568 |
+| D10 | 0.4418 | 0.1779 |
+| D20 | 0.7077 | 0.3843 |
+| D40 | 0.5833 | 0.2869 |
+
+  P 0.579, R 0.548. Máx. mAP@0.5 de la corrida: 0.5826 (época 120).
+- Convergencia (regresión de la mAP de val): épocas 32–81, +0.052 de mAP@0.5:0.95 por 50 épocas (aún aprendiendo);
+  épocas 82–131, −0.003 ± 0.001 (plana/bajando) con mAP@0.5 +0.005 ± 0.002. Convergió en la métrica de selección.
+- Comparado con India (maestro val mAP@0.5 0.345), Japón es un conjunto mucho más "aprendible" (más datos, menos
+  fondo, D10 abundante).
+- **Resultado: J2 completada.** Siguiente: J3 (alumnos base de Japón).

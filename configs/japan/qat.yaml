@@ -35,7 +35,7 @@ splits_dir: data/splits/japan
 project: runs/japan/qat            # runs/qat/qat_{base|kd}_s{seed}; control en runs/qat/mopt_{base|kd}_s{seed}
 
 # Punto de control del ajuste QAT (fijado el 2026-10-18, antes de ver resultados de la QAT):
-# best = best.pt según el fitness de Ultralytics en VALIDACIÓN (0.1·mAP@0.5 + 0.9·mAP@0.5:0.95), igual que los
+# best = best.pt según el fitness de Ultralytics en VALIDACIÓN (en 8.4.164: solo mAP@0.5:0.95), igual que los
 # alumnos base y KD (D2). Alternativa no elegida: last (última época).
 punto_control: best
 
