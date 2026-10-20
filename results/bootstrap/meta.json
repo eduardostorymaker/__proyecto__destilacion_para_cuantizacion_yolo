@@ -1,0 +1,7 @@
+{
+  "B": 1000,
+  "semilla": 42,
+  "n_imagenes": 1166,
+  "replicas_con_clase_ausente": 0,
+  "nota": "r\u00e9plica 0 = muestra original; 1..B = remuestreos"
+}

@@ -52,7 +52,7 @@ entrenamiento.
 | 5 | Cuantización PTQ (TensorRT y OpenVINO) | ✅ |
 | 5b | QAT con NVIDIA ModelOpt | ✅ |
 | 6 | Evaluación en test (mAP, ECE) | ✅ PTQ (la QAT se evalúa con el mismo código) |
-| 7 | Estadística (bootstrap, Holm) | pendiente |
+| 7 | Estadística (bootstrap, Holm) | ✅ India |
 | 8 | Eficiencia (latencia, FPS, tamaño) | pendiente |
 | 9 | Tablas y figuras del paper | pendiente |
 | J1 | Réplica en Japón: datos y auditoría | ✅ |
@@ -393,11 +393,34 @@ que reutilizan el ECE y el bootstrap.
 - Salidas: `results/metrics.csv` (52 filas: una por modelo/formato/precisión),
   `results/tables/delta_map.csv` y `results/tables/consistency_pt_vs_trt.csv`.
 
-### Fases 7 a 9 — Pendientes
+### Fase 7 — Estadística (India)
+
+```bash
+python -m src.eval.evaluate --solo-stats   # una vez: guarda los aciertos exactos por imagen de Ultralytics
+python -m src.eval.bootstrap               # bootstrap pareado D7 (configs/stats.yaml)
+```
+
+`src/eval/bootstrap.py` aplica D7 tal cual: 1 000 remuestreos de las 1 166 imágenes de test (semilla 42, mismos
+índices para todos los modelos), diferencias por semilla promediadas, p bootstrap centrado, Holm sobre 5 contrastes.
+La mAP de cada réplica usa los aciertos exactos de Ultralytics por imagen y su misma `ap_per_class`; sin remuestreo
+reproduce la mAP de Ultralytics (máx. |Δ| = 0.000005).
+
+| H | Pregunta | D observado | Intervalo | p (Holm) | Decisión |
+|---|---|---|---|---|---|
+| H1a | ¿KD pierde menos mAP@0.5 con PTQ INT8? | +0.004 | IC95 [−0.007, +0.015] | 1.00 | no significativo (2/3 semillas a favor de KD) |
+| H1b | ¿KD pierde menos mAP@0.5 con QAT INT8? | −0.005 | IC95 [−0.020, +0.015] | 1.00 | no significativo (0/3) |
+| H2a | ¿KD tiene mejor ECE con PTQ INT8? | −0.016 | IC95 [−0.031, +0.013] | 1.00 | no significativo (1/3) |
+| H2b | ¿KD tiene mejor ECE con QAT INT8? | −0.008 | IC95 [−0.027, +0.014] | 1.00 | no significativo (1/3) |
+| H3 | ¿KD + PTQ no es inferior a base + QAT (δ = 0.01)? | −0.019 | IC90 [−0.033, −0.009] | 1.00 | no se demuestra; base + QAT es mejor |
+
+En India la KD no reduce de forma significativa la pérdida por cuantización ni mejora la calibración, y un alumno
+KD con PTQ no alcanza a un alumno base con QAT. Detalle y exploratorios en `results/tables/hypothesis_tests.csv` y
+`results/tables/exploratory.csv`.
+
+### Fases 8 y 9 — Pendientes
 
 | Fase | Qué hará |
 |---|---|
-| 7 — Estadística | Bootstrap pareado (1 000 remuestreos de imágenes de test), contrastes H1a–H3 con corrección de Holm |
 | 8 — Eficiencia | Latencia, FPS y tamaño en GPU (TensorRT) y CPU (OpenVINO); sin otra carga, 3 repeticiones |
 | 9 — Reporte | Tablas III–V y figuras del paper |
 

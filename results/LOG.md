@@ -759,3 +759,30 @@ Resultados en test, TensorRT (Δ = FP32 − cuantizado; media ± d.e. de 3 semil
 - Comparado con India (maestro val mAP@0.5 0.345), Japón es un conjunto mucho más "aprendible" (más datos, menos
   fondo, D10 abundante).
 - **Resultado: J2 completada.** Siguiente: J3 (alumnos base de Japón).
+
+## 2026-10-20 — Fase 7: estadística de India (D7) completada
+
+- `python -m src.eval.evaluate --solo-stats` (log `runs/logs/evaluate_solo_stats_india.log`): 52 reevaluaciones
+  guardando los aciertos exactos de Ultralytics (`stats_por_imagen.npz`); **52/52 con mAP idéntica a metrics.csv**.
+- `python -m src.eval.bootstrap` (log `runs/logs/bootstrap_india.log`, 745 s): **reproducción de Ultralytics OK**
+  (máx. |Δ| = 0.000005). Réplicas con alguna clase ausente: 0 de 1000. Distribuciones en `results/bootstrap/*.npy`
+  (réplica 0 = muestra original). Tablas: `results/tables/hypothesis_tests.csv`, `exploratory.csv`,
+  `descriptive.csv`, `bootstrap_reproduccion.csv`.
+
+**Familia confirmatoria (B = 1000, Holm sobre 5 contrastes; D > 0 favorece a KD en H1 y H2):**
+
+| H | Estadístico | D_obs | IC | p crudo | p Holm | Decisión | Semillas |
+|---|---|---|---|---|---|---|---|
+| H1a | dmAP50 base − KD, PTQ INT8 | +0.0037 | IC95 [−0.0073, +0.0147] | 0.471 | 1.000 | no rechaza H0 | 2/3 positivas |
+| H1b | dmAP50 base − KD, QAT INT8 | −0.0047 | IC95 [−0.0201, +0.0150] | 0.563 | 1.000 | no rechaza H0 | 0/3 positivas |
+| H2a | ECE base − KD, PTQ INT8 | −0.0163 | IC95 [−0.0313, +0.0132] | 0.249 | 1.000 | no rechaza H0 | 1/3 positivas |
+| H2b | ECE base − KD, QAT INT8 | −0.0080 | IC95 [−0.0269, +0.0141] | 0.425 | 1.000 | no rechaza H0 | 1/3 positivas |
+| H3 | mAP50 (KD + PTQ) − (base + QAT), δ = 0.010 | −0.0190 | IC90 [−0.0329, −0.0086] | 0.847 | 1.000 | no se demuestra la no inferioridad | 1/3 con D > −δ |
+
+- Lectura: en India, **la KD no reduce de forma significativa la pérdida de mAP por INT8** (ni con PTQ ni con QAT) ni
+  mejora la calibración; los IC incluyen el 0. **KD + PTQ no alcanza a base + QAT**: su IC 90 % queda entero por
+  debajo de 0 (−3.3 a −0.9 puntos de mAP@0.5) y su límite inferior está por debajo de −δ.
+- Exploratorios destacados (IC 95 %): el maestro pierde ~14 puntos más que los alumnos con la PTQ de TensorRT (E08/E09,
+  colapso de confianzas); FP16 no pierde (E10–E12 ≈ 0); con el control ModelOpt PTQ y con OpenVINO INT8 tampoco hay
+  diferencia base vs. KD (E17, E18). Sin D10 las conclusiones no cambian (E05–E07).
+- **Resultado: Fase 7 (India) completada.**

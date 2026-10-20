@@ -342,7 +342,7 @@ proyecto/
 - [x] Fase 5 — PTQ (2026-10-18; 33 exportaciones TRT/OV; ~65 % de capas de cómputo en INT8)
 - [x] Fase 5b — QAT (2026-10-19; 6 controles ModelOpt PTQ + 6 QAT, evaluados en test con `src/eval/evaluate.py`)
 - [x] Fase 6 — Evaluación (2026-10-18, PTQ: `results/metrics.csv`; los modelos QAT se evaluarán con el mismo `src/eval/evaluate.py`)
-- [ ] Fase 7 — Estadística
+- [x] Fase 7 — Estadística (2026-10-20, India: ninguna hipótesis rechaza H0 tras Holm; `results/tables/hypothesis_tests.csv`)
 - [ ] Fase 8 — Eficiencia
 - [ ] Fase 9 — Tablas y figuras
 - [x] J1 — Datos Japón (2026-10-18; auditoría en `results/japan/tables/data_audit.csv`)
