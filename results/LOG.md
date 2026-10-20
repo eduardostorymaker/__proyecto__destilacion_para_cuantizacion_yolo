@@ -703,3 +703,24 @@ Resultados en test, TensorRT (Δ = FP32 − cuantizado; media ± d.e. de 3 semil
   de TensorRT vía Ultralytics; la QAT apenas cambia eso. La QAT sí reduce el ECE respecto de FP32 (−0.011 a −0.013).
 - Presupuesto de cómputo actualizado (`results/tables/compute_budget.csv`).
 - **Resultado: Fase 5b completada.**
+
+## 2026-10-19 — Fase 7: implementación y verificación de reproducción (detenida por D7)
+
+- `src/eval/bootstrap.py` (config `configs/stats.yaml`; Japón: `configs/japan/stats.yaml`). Bootstrap pareado según D7:
+  B = 1000, semilla 42, mismos índices de imagen para todos los modelos; en cada réplica cada imagen aporta sus
+  detecciones y cajas reales tantas veces como salió sorteada, y la AP se calcula con `ap_per_class` de Ultralytics
+  (AP interpolada en 101 puntos); emparejamiento por imagen con la misma lógica que `match_predictions`.
+  Contrastes H1a–H3, p bootstrap centrado, Holm, IC por percentiles, signos por semilla y 18 exploratorios.
+- Desviación registrada en `protocol_deviations.csv`: la Fase 7 se implementó después de ver los resultados
+  descriptivos de test (sin cambiar nada de D7).
+- **Verificación de reproducción (D7: |Δ| < 0.001) → FALLA con las predicciones de predictions.json:** 5 de 52 modelos
+  fuera de tolerancia (peor: student_kd_s1 TRT INT8, Δ mAP@0.5 = +0.0030; mediana |Δ| = 0.00004). El análisis se
+  detuvo sin calcular contrastes.
+- **Causa confirmada:** predictions.json redondea cajas (3 decimales) y confianzas (5 decimales). Reevaluando
+  student_kd_s1 TRT INT8 y capturando los aciertos exactos de Ultralytics por imagen, `ap_per_class` da 0.284062,
+  idéntico a Ultralytics; con el json redondeado, 15 de 1 166 imágenes tienen algún acierto distinto.
+- **Arreglo preparado (técnico, sin cambiar el diseño):** `src/eval/evaluate.py` guarda en cada evaluación
+  `stats_por_imagen.npz` con los aciertos exactos de Ultralytics, y `--solo-stats` reevalúa los modelos ya
+  evaluados solo para generarlos (comprobando que la mAP coincide con metrics.csv). `bootstrap.py` usa esos
+  aciertos si existen; el ECE sigue usando predictions.json (diferencia por redondeo ≤ 4·10⁻⁶).
+- Pendiente: confirmación del usuario para reevaluar (`bash scripts/evaluate.sh --solo-stats`) y correr el bootstrap.

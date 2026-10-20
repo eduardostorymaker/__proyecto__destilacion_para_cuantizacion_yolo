@@ -28,6 +28,7 @@ from pathlib import Path
 
 import numpy as np
 from ultralytics import YOLO
+from ultralytics.utils import metrics as ul_metrics
 
 from src.eval.ece import cargar_gt, cargar_predicciones, ece, emparejar
 from src.quant.engines_registry import verificar
@@ -68,14 +69,41 @@ def escribir_csv(ruta: Path, filas: list[dict]) -> None:
         w.writerows(filas)
 
 
+# Captura de los aciertos EXACTOS por imagen que calcula Ultralytics (antes del redondeo de predictions.json).
+# El bootstrap (Fase 7) los usa para reproducir la mAP de Ultralytics sin desviaciones por redondeo.
+_CAPTURA: list[dict] = []
+_update_stats_original = ul_metrics.DetMetrics.update_stats
+
+
+def _update_stats_con_captura(self, stat):
+    _CAPTURA.append({k: np.asarray(stat[k]) for k in ("tp", "conf", "pred_cls", "target_cls")}
+                    | {"im_name": stat["im_name"]})
+    return _update_stats_original(self, stat)
+
+
+ul_metrics.DetMetrics.update_stats = _update_stats_con_captura
+
+
+def guardar_stats(destino: Path) -> None:
+    """Guarda los aciertos exactos por imagen capturados en la última evaluación."""
+    nombres = np.array([Path(c["im_name"]).stem for c in _CAPTURA])
+    img = np.concatenate([np.full(len(c["conf"]), i) for i, c in enumerate(_CAPTURA)])
+    np.savez_compressed(destino, nombres=nombres, img=img,
+                        tp=np.concatenate([c["tp"].reshape(-1, 10) for c in _CAPTURA]).astype(bool),
+                        conf=np.concatenate([c["conf"] for c in _CAPTURA]),
+                        pred_cls=np.concatenate([c["pred_cls"] for c in _CAPTURA]))
+
+
 def evaluar(cfg: dict, modelo: str, formato: str, prec: str, ruta: Path, gt: dict) -> dict:
     nombre = f"{modelo}_{formato}_{prec}"
+    _CAPTURA.clear()
     v = YOLO(str(ruta), task="detect").val(
         data=str(resolver_ruta(cfg["data"])), split=cfg["split"], imgsz=cfg["imgsz"], batch=cfg["batch"],
         conf=cfg["conf"], iou=cfg["iou"], rect=cfg["rect"], save_json=True, plots=False, verbose=False,
         device="cpu" if formato == "openvino" else 0,
         project=str(resolver_ruta(cfg["salida"])), name=nombre, exist_ok=True)
     pred_json = Path(v.save_dir) / "predictions.json"
+    guardar_stats(Path(v.save_dir) / "stats_por_imagen.npz")
     ap50 = {v.names[i]: float(a) for i, a in zip(v.box.ap_class_index, v.box.ap50)}
     ap = {v.names[i]: float(a) for i, a in zip(v.box.ap_class_index, v.box.ap)}
     e = cfg["ece"]
@@ -155,9 +183,31 @@ def main() -> None:
     ap.add_argument("--config", default=None, help="por defecto, eval.yaml del dataset")
     agregar_argumento(ap)
     ap.add_argument("--solo-tablas", action="store_true")
+    ap.add_argument("--solo-stats", action="store_true",
+                    help="reevalúa los modelos ya evaluados solo para guardar stats_por_imagen.npz (sin tocar metrics.csv)")
     a = ap.parse_args()
     a.config = a.config or ruta_config("eval.yaml", a.dataset)
     cfg = cargar_yaml(a.config)
+
+    if a.solo_stats:
+        d = cargar_yaml(cfg["data"])
+        raiz = Path(d["path"])
+        gt = cargar_gt(raiz / d[cfg["split"]], raiz / d[cfg["split"]].replace("images", "labels"))
+        previas = {(r["modelo"], r["formato"], r["precision"]): r for r in leer_csv(resolver_ruta(cfg["tablas"]["metricas"]))}
+        for modelo, formato, prec, ruta in trabajos(cfg):
+            npz = resolver_ruta(cfg["salida"]) / f"{modelo}_{formato}_{prec}" / "stats_por_imagen.npz"
+            r = previas.get((modelo, formato, prec))
+            if r is None or npz.exists():
+                continue
+            if formato != "pytorch":
+                verificar(ruta)
+            fila = evaluar(cfg, modelo, formato, prec, ruta, gt)
+            iguales = abs(fila["mAP50"] - float(r["mAP50"])) < 1e-9 and abs(fila["mAP50_95"] - float(r["mAP50_95"])) < 1e-9
+            print(f"   {modelo} {formato} {prec}: stats guardados; mAP igual a metrics.csv: {iguales}", flush=True)
+            if not iguales:
+                raise RuntimeError("La reevaluación no reproduce metrics.csv: revisar antes de seguir")
+        print("FIN", flush=True)
+        return
 
     if not a.solo_tablas:
         d = cargar_yaml(cfg["data"])

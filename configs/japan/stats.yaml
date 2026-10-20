@@ -1,0 +1,25 @@
+# RÉPLICA EN JAPÓN (D9): mismas opciones que configs/stats.yaml; solo cambian las rutas.
+# Fase 7: estadística preespecificada (D7 del CLAUDE.md). NO cambiar alfa, delta, B ni las hipótesis.
+
+eval_config: configs/japan/eval.yaml       # de aquí salen el ground truth de test, metrics.csv y los parámetros de ECE
+B: 1000                               # remuestreos con reemplazo de las imágenes de test (1 565 en Japón)
+semilla: 42
+alfa: 0.05                            # global, con corrección de Holm sobre la familia confirmatoria
+delta: 0.010                          # margen de no inferioridad de H3 (1 punto de mAP@0.5)
+ic: 0.95                              # IC por percentiles para H1a–H2b y exploratorios
+ic_h3: 0.90                           # IC bilateral de H3 (≡ contraste unilateral al 5 %)
+semillas: [0, 1, 2]
+tolerancia_reproduccion: 0.001        # |mAP propia − mAP de Ultralytics| sin remuestreo (D7)
+
+# Motor y precisiones de cada contraste (D6: ΔmAP dentro del mismo motor, TensorRT)
+motor: tensorrt
+fp32: fp32
+ptq_int8: int8
+qat_int8: qat_int8
+
+salidas:
+  hipotesis: results/japan/tables/hypothesis_tests.csv
+  exploratorios: results/japan/tables/exploratory.csv
+  descriptivo: results/japan/tables/descriptive.csv
+  verificacion: results/japan/tables/bootstrap_reproduccion.csv
+  distribuciones: results/japan/bootstrap      # un .npy por estadístico (réplica 0 = muestra original)
