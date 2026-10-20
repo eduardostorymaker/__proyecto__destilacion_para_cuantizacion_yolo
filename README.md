@@ -56,7 +56,7 @@ entrenamiento.
 | 8 | Eficiencia (latencia, FPS, tamaño) | pendiente |
 | 9 | Tablas y figuras del paper | pendiente |
 | J1 | Réplica en Japón: datos y auditoría | ✅ |
-| J2–J9 | Réplica en Japón: maestro, alumnos, cuantización, evaluación, estadística | pendiente (después de India) |
+| J2–J9 | Réplica en Japón: maestro, alumnos, cuantización, evaluación, estadística | ⏳ J2 en curso (ver checklist) |
 
 ### Resultados hasta ahora (validación)
 
@@ -74,6 +74,24 @@ semillas para los alumnos):
   semillas (d.e. de mAP@0.5:0.95: 0.001 frente a 0.006).
 - La PTQ INT8 degrada a los alumnos base en 3/3 semillas: −3.1 puntos de mAP@0.5 (−9.5 %) y −4.3 en D40,
   con más precisión y menos recall (−10.9 %). FP16 no pierde precisión (exploración `ptq_check`).
+
+### Resultados en test (Fases 5, 5b y 6; descriptivos, la inferencia es la Fase 7)
+
+Todos los modelos con letterbox cuadrado 640×640 y batch 1; pérdida = FP32 − cuantizado dentro de TensorRT
+(media ± d.e. de 3 semillas):
+
+| | mAP@0.5 FP32 | Pérdida PTQ INT8 | Pérdida control ModelOpt PTQ | Pérdida QAT INT8 | ECE PTQ INT8 | ECE QAT INT8 |
+|---|---|---|---|---|---|---|
+| Alumnos base | 0.310 ± 0.020 | 0.035 ± 0.009 | 0.006 ± 0.009 | 0.006 ± 0.003 | 0.096 | 0.077 |
+| Alumnos KD | 0.316 ± 0.005 | 0.031 ± 0.007 | 0.013 ± 0.003 | 0.011 ± 0.009 | 0.113 | 0.085 |
+| Maestro YOLO11m | 0.329 | 0.178 (colapso de confianzas) | — | — | — | — |
+
+- Con la PTQ de TensorRT (Ultralytics), el alumno KD pierde algo menos (2/3 semillas); con QAT, algo más.
+- Casi toda la ganancia de la QAT viene del esquema de cuantización de ModelOpt (Q/DQ explícito, pesos por
+  canal): el control sin ajuste fino ya pierde casi lo mismo que la QAT.
+- FP16 no pierde nada, y OpenVINO INT8 (NNCF) casi no pierde (≤ 0.3 puntos).
+- El maestro colapsa con la PTQ de TensorRT por valores extremos en las activaciones de su cabeza (ver
+  "Exploraciones").
 
 ---
 
@@ -336,15 +354,52 @@ de los engines INT8.
   (por ejemplo, el bloque de atención y la sigmoide final). El patrón es el mismo en alumnos base y KD
   (`results/tables/engine_layers.csv`).
 
-### Fases 5b a 9 — Pendientes
+### Fase 5b — QAT con NVIDIA ModelOpt
 
-| Fase | Qué hará | Configuración |
-|---|---|---|
-| 5b — QAT | Cuantización durante el entrenamiento con NVIDIA ModelOpt: calibrar, evaluar sin ajuste (control) y ajustar 30 épocas | `configs/qat.yaml` (por crear) |
-| 6 — Evaluación | Todos los modelos en el split **test** con letterbox cuadrado (`rect=False`), batch 1: mAP, AP por clase, precisión, recall y ECE; ΔmAP dentro del mismo motor | — |
-| 7 — Estadística | Bootstrap pareado (1 000 remuestreos), contrastes H1a–H3 con corrección de Holm | — |
-| 8 — Eficiencia | Latencia, FPS y tamaño en GPU (TensorRT) y CPU (OpenVINO) | — |
-| 9 — Reporte | Tablas III–V y figuras del paper | — |
+```bash
+bash scripts/qat.sh                                # los 6 alumnos (reanudable)
+bash scripts/qat.sh --alumnos student_base_s0 --humo   # prueba de humo
+```
+
+`src/quant/qat.py` (configuración congelada en `configs/qat.yaml`) usa la QAT integrada en Ultralytics
+(`train(quantize=8)`, cuantización explícita Q/DQ INT8 con ModelOpt) con dos cambios para cumplir D5:
+
+1. La calibración usa las mismas 500 imágenes de `calib.yaml` que la PTQ, sin aumentación (Ultralytics usa
+   por defecto 8 lotes aumentados de entrenamiento). Calibrador de ModelOpt: algoritmo "max", activaciones
+   por tensor y pesos por canal.
+2. Antes del ajuste se guarda y exporta el modelo solo calibrado ("ModelOpt PTQ") como control, para medir
+   la ganancia de la QAT contra su mismo esquema de cuantización.
+
+El ajuste fino usa solo la pérdida de detección (también en los alumnos KD), 30 épocas, lr0 0.001, sin
+warmup ni mosaico; el punto de control es best.pt por validación. Cada ajuste tardó ~1.1 h. Los engines
+resultantes se registran en `exports.csv` como `mopt_int8` (control) y `qat_int8`.
+
+### Fase 6 — Evaluación en test
+
+```bash
+bash scripts/evaluate.sh                 # evalúa lo que falte (reanudable) y recalcula las tablas
+bash scripts/evaluate.sh --solo-tablas   # solo recalcula consistencia y ΔmAP
+```
+
+`src/eval/evaluate.py` (configuración `configs/eval.yaml`) evalúa en **test** el .pt FP32 y todas las
+exportaciones: letterbox cuadrado 640×640, batch 1, conf 0.001, iou 0.7. Antes de evaluar cada engine verifica
+su hash SHA-256 en `results/tables/engines.csv`. Guarda las predicciones por imagen (`runs/eval/*/predictions.json`),
+que reutilizan el ECE y el bootstrap.
+
+- **ECE** (`src/eval/ece.py`): detecciones con confianza ≥ 0.25, emparejadas de mayor a menor confianza con la
+  caja real libre de mayor IoU (≥ 0.5); correcta si coincide la clase; 15 intervalos de igual ancho.
+- **Control de consistencia:** el .pt FP32 debe coincidir con TensorRT FP32 (|Δ mAP@0.5| < 0.002); se cumple en
+  los 7 modelos (máx. 0.0008).
+- Salidas: `results/metrics.csv` (52 filas: una por modelo/formato/precisión),
+  `results/tables/delta_map.csv` y `results/tables/consistency_pt_vs_trt.csv`.
+
+### Fases 7 a 9 — Pendientes
+
+| Fase | Qué hará |
+|---|---|
+| 7 — Estadística | Bootstrap pareado (1 000 remuestreos de imágenes de test), contrastes H1a–H3 con corrección de Holm |
+| 8 — Eficiencia | Latencia, FPS y tamaño en GPU (TensorRT) y CPU (OpenVINO); sin otra carga, 3 repeticiones |
+| 9 — Reporte | Tablas III–V y figuras del paper |
 
 El plan estadístico (hipótesis, α, δ y número de remuestreos) está fijado de antemano en
 [CLAUDE.md](CLAUDE.md), sección D7, y no se cambia después de ver resultados.
@@ -375,18 +430,22 @@ python -m src.data.dataset_stats   --config configs/japan/data_prep.yaml
 En Japón se eliminaron 8 284 cajas de otras clases (D44, D50 y D43) y 1 caja de D20 de menos de 1 px; ninguna
 imagen corrupta. Detalle en `results/japan/tables/data_audit.csv` y `results/japan/tables/dataset_stats.csv`.
 
-Las fases J2 a J9 se ejecutarán después de terminar India, con los **mismos scripts** y el argumento
-`--dataset japan`, que toma la configuración de `configs/japan/` (mismos nombres de archivo que en India):
+Las fases J2 a J9 usan los **mismos scripts** con el argumento `--dataset japan`, que toma la configuración
+de `configs/japan/` (mismos nombres de archivo que en India). Checklist:
 
-```bash
-bash scripts/train_teacher.sh --dataset japan                       # J2: maestro YOLO11m
-for s in 0 1 2; do bash scripts/train_student.sh --kd off --seed $s --dataset japan; done   # J3
-bash scripts/pilot_lambda.sh japan                                  # J4: piloto de λ (se fija λ en configs/japan/kd.yaml)
-for s in 0 1 2; do bash scripts/train_student.sh --kd on --seed $s --dataset japan; done    # J4: alumnos KD
-bash scripts/export_all.sh --dataset japan                          # J5: PTQ
-bash scripts/qat.sh --dataset japan                                 # J5b: QAT
-bash scripts/evaluate.sh --dataset japan                            # J6: evaluación en test
-```
+| Fase | Comando | Tiempo estimado | Estado |
+|---|---|---|---|
+| J2 — Maestro YOLO11m | `bash scripts/train_teacher.sh --dataset japan` | 8–14 h | ⏳ |
+| J3 — Alumnos base s0–s2 | `for s in 0 1 2; do bash scripts/train_student.sh --kd off --seed $s --dataset japan; done` | ~11 h | pendiente |
+| J4a — Humo y verificación KD | `bash scripts/train_student.sh --kd on --seed 0 --humo --dataset japan` + `check_kd` | minutos | pendiente |
+| J4b — Piloto de λ | `bash scripts/pilot_lambda.sh japan` (luego se fija λ en `configs/japan/kd.yaml`) | ~4 h | pendiente |
+| J4c — Alumnos KD s0–s2 | `for s in 0 1 2; do bash scripts/train_student.sh --kd on --seed $s --dataset japan; done` | ~26 h | pendiente |
+| J5 — PTQ | `bash scripts/export_all.sh --dataset japan` | ~2 h | pendiente |
+| J5b — QAT | `bash scripts/qat.sh --dataset japan` | 7–9 h | pendiente |
+| J6 — Evaluación en test | `bash scripts/evaluate.sh --dataset japan` | < 1 h | pendiente |
+| J7 — Estadística | familia D7 y Holm propios de Japón | — | pendiente |
+| J8 — Eficiencia | D8 | — | pendiente |
+| J9 — Tablas y figuras | comparación India vs. Japón | — | pendiente |
 
 Decisiones confirmadas antes de ver resultados de Japón (D9): solo maestro YOLO11m, piloto de λ propio y
 estadística D7 completa por separado en cada dataset. Estimación: unas 65–75 h de GPU.

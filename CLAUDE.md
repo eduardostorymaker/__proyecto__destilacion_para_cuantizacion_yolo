@@ -346,4 +346,15 @@ proyecto/
 - [ ] Fase 8 — Eficiencia
 - [ ] Fase 9 — Tablas y figuras
 - [x] J1 — Datos Japón (2026-10-18; auditoría en `results/japan/tables/data_audit.csv`)
-- [ ] J2–J9 — Réplica Japón (decisiones de D9 confirmadas 2026-10-18; se ejecuta después de India)
+- Réplica Japón (D9; decisiones confirmadas 2026-10-18). Todos los comandos con `--dataset japan`:
+  - [ ] J2 — Maestro YOLO11m: `bash scripts/train_teacher.sh --dataset japan` (~8–14 h)
+  - [ ] J3 — Alumnos base s0–s2: `for s in 0 1 2; do bash scripts/train_student.sh --kd off --seed $s --dataset japan; done` (~11 h)
+  - [ ] J4a — Humo y verificación KD con el maestro de Japón: `--kd on --seed 0 --humo --dataset japan` + `check_kd`
+  - [ ] J4b — Piloto λ: `bash scripts/pilot_lambda.sh japan` (~4 h) → fijar λ en `configs/japan/kd.yaml`
+  - [ ] J4c — Alumnos KD s0–s2: `for s in 0 1 2; do bash scripts/train_student.sh --kd on --seed $s --dataset japan; done` (~26 h)
+  - [ ] J5 — PTQ: `bash scripts/export_all.sh --dataset japan` (~2 h)
+  - [ ] J5b — QAT: `bash scripts/qat.sh --dataset japan` (~7–9 h)
+  - [ ] J6 — Evaluación en test: `bash scripts/evaluate.sh --dataset japan`
+  - [ ] J7 — Estadística D7 (familia y Holm propios de Japón)
+  - [ ] J8 — Eficiencia D8
+  - [ ] J9 — Tablas y figuras comparando India y Japón
