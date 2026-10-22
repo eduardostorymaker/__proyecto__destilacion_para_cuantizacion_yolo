@@ -32,16 +32,28 @@ from src.quant.engines_registry import info_sistema, verificar
 from src.utils.config import cargar_yaml, resolver_ruta
 from src.utils.dataset import agregar_argumento, ruta_config
 
-CAMPOS_GPU = "clocks.sm,clocks.mem,pstate,power.draw,temperature.gpu,utilization.gpu,clocks.max.sm"
+_NVML = None
 
 
 def consulta_gpu() -> dict:
-    out = subprocess.check_output(["nvidia-smi", f"--query-gpu={CAMPOS_GPU}", "--format=csv,noheader,nounits"],
-                                  text=True).strip().splitlines()[0]
-    v = [x.strip() for x in out.split(",")]
-    num = lambda x: float(x) if x.replace(".", "", 1).isdigit() else float("nan")  # noqa: E731
-    return {"sm_mhz": num(v[0]), "mem_mhz": num(v[1]), "pstate": v[2], "potencia_w": num(v[3]),
-            "temp_c": num(v[4]), "util_pct": num(v[5]), "sm_max_mhz": num(v[6])}
+    """Estado de la GPU con NVML dentro del proceso (no lanza nvidia-smi: así el muestreo casi no usa CPU)."""
+    global _NVML
+    import pynvml as nv
+
+    if _NVML is None:
+        nv.nvmlInit()
+        _NVML = nv.nvmlDeviceGetHandleByIndex(0)
+    h = _NVML
+    try:
+        potencia = nv.nvmlDeviceGetPowerUsage(h) / 1000
+    except nv.NVMLError:  # en WSL la potencia no está disponible
+        potencia = float("nan")
+    return {"sm_mhz": float(nv.nvmlDeviceGetClockInfo(h, nv.NVML_CLOCK_SM)),
+            "mem_mhz": float(nv.nvmlDeviceGetClockInfo(h, nv.NVML_CLOCK_MEM)),
+            "pstate": f"P{nv.nvmlDeviceGetPerformanceState(h)}", "potencia_w": potencia,
+            "temp_c": float(nv.nvmlDeviceGetTemperature(h, nv.NVML_TEMPERATURE_GPU)),
+            "util_pct": float(nv.nvmlDeviceGetUtilizationRates(h).gpu),
+            "sm_max_mhz": float(nv.nvmlDeviceGetMaxClockInfo(h, nv.NVML_CLOCK_SM))}
 
 
 def procesos_gpu() -> list[str]:
@@ -60,10 +72,7 @@ class MuestreoRelojes(threading.Thread):
 
     def run(self):
         while not self._fin.is_set():
-            try:
-                self.muestras.append(consulta_gpu())
-            except (OSError, subprocess.CalledProcessError):
-                pass
+            self.muestras.append(consulta_gpu())
             self._fin.wait(self.periodo)
 
     def detener(self) -> dict:
@@ -75,7 +84,7 @@ class MuestreoRelojes(threading.Thread):
         return {"sm_mhz_media": round(float(np.nanmean(sm)), 0), "sm_mhz_min": np.nanmin(sm),
                 "mem_mhz_media": round(float(np.nanmean([m["mem_mhz"] for m in self.muestras])), 0),
                 "pstates": "/".join(sorted({m["pstate"] for m in self.muestras})),
-                # en WSL nvidia-smi no reporta la potencia ([N/A]): queda vacía
+                # en WSL NVML no reporta la potencia: queda vacía
                 "potencia_w_media": round(float(np.nanmean(pot)), 1) if not np.isnan(pot := [m["potencia_w"] for m in self.muestras]).all() else "",
                 "temp_c_max": np.nanmax([m["temp_c"] for m in self.muestras])}
 
@@ -130,14 +139,19 @@ def medir(ruta: Path, formato: str, imagenes: list[np.ndarray], cfg: dict) -> tu
     for r in range(cfg["repeticiones"]):
         for i in range(cfg["calentamiento"]):
             modelo.predict(imagenes[i % n], **kw)
-        relojes = MuestreoRelojes(cfg["muestreo_relojes_s"])
-        relojes.start()
+        # Relojes de la GPU solo para los engines de GPU. (Antes el hilo se iniciaba también en CPU y nunca se
+        # detenía: los hilos acumulados cargaban la CPU y degradaban la latencia de OpenVINO.)
+        relojes = MuestreoRelojes(cfg["muestreo_relojes_s"]) if formato != "openvino" else None
+        if relojes:
+            relojes.start()
         t = {"preproceso": [], "inferencia": [], "postproceso": []}
-        for i in range(cfg["medidas"]):
-            s = modelo.predict(imagenes[(cfg["calentamiento"] + i) % n], **kw)[0].speed
-            t["preproceso"].append(s["preprocess"]); t["inferencia"].append(s["inference"])
-            t["postproceso"].append(s["postprocess"])
-        reloj = relojes.detener() if formato != "openvino" else {}
+        try:
+            for i in range(cfg["medidas"]):
+                s = modelo.predict(imagenes[(cfg["calentamiento"] + i) % n], **kw)[0].speed
+                t["preproceso"].append(s["preprocess"]); t["inferencia"].append(s["inference"])
+                t["postproceso"].append(s["postprocess"])
+        finally:
+            reloj = relojes.detener() if relojes else {}
         fila = {"repeticion": r + 1}
         for k, xs in t.items():
             fila[f"{k}_ms_mediana"] = round(float(np.median(xs)), 4)
