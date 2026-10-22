@@ -348,7 +348,7 @@ proyecto/
 - [x] J1 — Datos Japón (2026-10-18; auditoría en `results/japan/tables/data_audit.csv`)
 - Réplica Japón (D9; decisiones confirmadas 2026-10-18). Todos los comandos con `--dataset japan`:
   - [x] J2 — Maestro YOLO11m (2026-10-20; best.pt época 81, val mAP@0.5 0.571 / mAP@0.5:0.95 0.277)
-  - [ ] J3 — Alumnos base s0–s2: `for s in 0 1 2; do bash scripts/train_student.sh --kd off --seed $s --dataset japan; done` (~11 h)
+  - [x] J3 — Alumnos base s0–s2 (2026-10-21; val mAP@0.5 0.5529 ± 0.0012; maestro +1.8 puntos)
   - [ ] J4a — Humo y verificación KD con el maestro de Japón: `--kd on --seed 0 --humo --dataset japan` + `check_kd`
   - [ ] J4b — Piloto λ: `bash scripts/pilot_lambda.sh japan` (~4 h) → fijar λ en `configs/japan/kd.yaml`
   - [ ] J4c — Alumnos KD s0–s2: `for s in 0 1 2; do bash scripts/train_student.sh --kd on --seed $s --dataset japan; done` (~26 h)

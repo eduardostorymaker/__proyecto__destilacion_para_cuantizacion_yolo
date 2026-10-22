@@ -1,0 +1,26 @@
+# RÉPLICA EN JAPÓN (D9): mismas opciones que configs/bench.yaml; solo cambian las rutas.
+# Fase 8: eficiencia (D8 del CLAUDE.md).
+
+engines: results/tables/engines.csv   # se miden SOLO los engines registrados (hash SHA-256 verificado)
+prefijo_rutas: runs/japan/exports/
+data: configs/japan/data.yaml                # imágenes de entrada: split test (precargadas en memoria)
+split: test
+
+imgsz: 640
+batch: 1
+calentamiento: 50
+medidas: 500
+repeticiones: 3
+# Umbral de confianza del postproceso (NMS) en la medición: el de despliegue típico. La evaluación (D6) usa
+# 0.001 para calcular la mAP; aquí se mide la latencia de uso real.
+conf: 0.25
+iou: 0.7
+
+# Sistema sin otra carga: se aborta si, antes de medir, hay procesos en la GPU o la carga es alta
+max_util_gpu_pct: 10
+max_cpu_pct: 20
+muestreo_relojes_s: 0.5                # muestreo de relojes de la GPU durante cada repetición
+
+salidas:
+  crudo: results/japan/tables/efficiency_reps.csv   # una fila por modelo y repetición
+  resumen: results/japan/tables/efficiency.csv      # una fila por modelo (media ± d.e. entre repeticiones)

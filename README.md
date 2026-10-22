@@ -56,7 +56,7 @@ entrenamiento.
 | 8 | Eficiencia (latencia, FPS, tamaño) | pendiente |
 | 9 | Tablas y figuras del paper | pendiente |
 | J1 | Réplica en Japón: datos y auditoría | ✅ |
-| J2–J9 | Réplica en Japón: maestro, alumnos, cuantización, evaluación, estadística | ⏳ J2 hecho; J3 siguiente (ver checklist) |
+| J2–J9 | Réplica en Japón: maestro, alumnos, cuantización, evaluación, estadística | ⏳ J2–J3 hechos; J4 siguiente (ver checklist) |
 
 ### Resultados hasta ahora (validación)
 
@@ -459,7 +459,7 @@ de `configs/japan/` (mismos nombres de archivo que en India). Checklist:
 | Fase | Comando | Tiempo estimado | Estado |
 |---|---|---|---|
 | J2 — Maestro YOLO11m | `bash scripts/train_teacher.sh --dataset japan` | 8–14 h (real: 5.6 h) | ✅ val mAP@0.5 0.571 |
-| J3 — Alumnos base s0–s2 | `for s in 0 1 2; do bash scripts/train_student.sh --kd off --seed $s --dataset japan; done` | ~11 h | pendiente |
+| J3 — Alumnos base s0–s2 | `for s in 0 1 2; do bash scripts/train_student.sh --kd off --seed $s --dataset japan; done` | ~11 h (real: 11.3 h) | ✅ val mAP@0.5 0.553 ± 0.001 |
 | J4a — Humo y verificación KD | `bash scripts/train_student.sh --kd on --seed 0 --humo --dataset japan` + `check_kd` | minutos | pendiente |
 | J4b — Piloto de λ | `bash scripts/pilot_lambda.sh japan` (luego se fija λ en `configs/japan/kd.yaml`) | ~4 h | pendiente |
 | J4c — Alumnos KD s0–s2 | `for s in 0 1 2; do bash scripts/train_student.sh --kd on --seed $s --dataset japan; done` | ~26 h | pendiente |

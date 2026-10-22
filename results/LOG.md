@@ -786,3 +786,24 @@ Resultados en test, TensorRT (Δ = FP32 − cuantizado; media ± d.e. de 3 semil
   colapso de confianzas); FP16 no pierde (E10–E12 ≈ 0); con el control ModelOpt PTQ y con OpenVINO INT8 tampoco hay
   diferencia base vs. KD (E17, E18). Sin D10 las conclusiones no cambian (E05–E07).
 - **Resultado: Fase 7 (India) completada.**
+
+## 2026-10-21 — J3: alumnos base de Japón (seeds 0, 1, 2)
+
+- `for s in 0 1 2; do bash scripts/train_student.sh --kd off --seed $s --dataset japan; done` →
+  `runs/japan/students/student_base_s{0,1,2}`. 300 épocas cada uno, 3.74–3.78 h por corrida (estimado ~3.7 h),
+  sin NaN. best.pt (fitness de Ultralytics = mAP@0.5:0.95 de val): épocas 210, 148 y 150. En las últimas 50 épocas
+  la mAP@0.5:0.95 baja levemente en las 3 (−0.005 a −0.006 por 50 épocas): convergidos.
+- Revalidación en VALIDACIÓN (imgsz 640, batch 8, conf 0.001, iou 0.7):
+
+| Modelo | mAP@0.5 | mAP@0.5:0.95 | D00 | D10 | D20 | D40 | mAP@0.5 sin D10 |
+|---|---|---|---|---|---|---|---|
+| Maestro YOLO11m | 0.5711 | 0.2765 | 0.5515 | 0.4418 | 0.7077 | 0.5833 | 0.6142 |
+| base_s0 | 0.5541 | 0.2634 | 0.5138 | 0.4304 | 0.7008 | 0.5714 | 0.5953 |
+| base_s1 | 0.5517 | 0.2619 | 0.5230 | 0.4177 | 0.6989 | 0.5670 | 0.5963 |
+| base_s2 | 0.5529 | 0.2617 | 0.5182 | 0.4331 | 0.6899 | 0.5706 | 0.5929 |
+| Base (media ± d.e.) | 0.5529 ± 0.0012 | 0.2624 ± 0.0009 | 0.5183 ± 0.0046 | 0.4271 ± 0.0082 | 0.6966 ± 0.0059 | 0.5697 ± 0.0023 | 0.5949 ± 0.0018 |
+
+- El maestro supera a los alumnos en todas las clases: +1.8 puntos de mAP@0.5, +1.4 de mAP@0.5:0.95, +1.9 sin D10.
+  A diferencia de India, la variabilidad entre semillas es muy baja (d.e. 0.001), así que la ventaja del maestro es
+  clara frente al ruido.
+- **Resultado: J3 completada.** Siguiente: J4a (humo y verificación KD con el maestro de Japón).
