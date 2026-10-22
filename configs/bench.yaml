@@ -15,10 +15,16 @@ repeticiones: 3
 conf: 0.25
 iou: 0.7
 
-# Sistema sin otra carga: se aborta si, antes de medir, hay procesos en la GPU o la carga es alta
-max_util_gpu_pct: 10
+# Sistema sin otra carga: antes de CADA modelo se aborta si hay procesos de cómputo en la GPU o la carga es alta.
+# Carga de GPU efectiva = uso × reloj SM / reloj SM máximo, promediada en muestras_carga lecturas (en reposo, P8,
+# el escritorio de Windows marca ~10 % de uso relativo a un reloj de ~210 MHz, < 1 % del cómputo real).
+# La CPU se mide dentro de WSL (psutil) y en Windows (powershell.exe), porque psutil no ve la carga de Windows.
+max_util_gpu_pct: 10              # sobre la carga efectiva
 max_cpu_pct: 20
-muestreo_relojes_s: 0.5                # muestreo de relojes de la GPU durante cada repetición
+max_cpu_windows_pct: 20
+muestras_carga: 10
+periodo_carga_s: 0.5
+muestreo_relojes_s: 0.1                # muestreo de relojes de la GPU durante cada repetición
 
 salidas:
   crudo: results/tables/efficiency_reps.csv   # una fila por modelo y repetición

@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import os
 import statistics as st
 import subprocess
 import threading
@@ -31,7 +32,7 @@ from src.quant.engines_registry import info_sistema, verificar
 from src.utils.config import cargar_yaml, resolver_ruta
 from src.utils.dataset import agregar_argumento, ruta_config
 
-CAMPOS_GPU = "clocks.sm,clocks.mem,pstate,power.draw,temperature.gpu,utilization.gpu"
+CAMPOS_GPU = "clocks.sm,clocks.mem,pstate,power.draw,temperature.gpu,utilization.gpu,clocks.max.sm"
 
 
 def consulta_gpu() -> dict:
@@ -40,13 +41,14 @@ def consulta_gpu() -> dict:
     v = [x.strip() for x in out.split(",")]
     num = lambda x: float(x) if x.replace(".", "", 1).isdigit() else float("nan")  # noqa: E731
     return {"sm_mhz": num(v[0]), "mem_mhz": num(v[1]), "pstate": v[2], "potencia_w": num(v[3]),
-            "temp_c": num(v[4]), "util_pct": num(v[5])}
+            "temp_c": num(v[4]), "util_pct": num(v[5]), "sm_max_mhz": num(v[6])}
 
 
 def procesos_gpu() -> list[str]:
     out = subprocess.check_output(["nvidia-smi", "--query-compute-apps=pid,process_name", "--format=csv,noheader"],
                                   text=True).strip()
-    return [l for l in out.splitlines() if l.strip()]
+    propio = str(os.getpid())  # el engine anterior de este mismo proceso puede seguir en memoria
+    return [l for l in out.splitlines() if l.strip() and l.split(",")[0].strip() != propio]
 
 
 class MuestreoRelojes(threading.Thread):
@@ -73,22 +75,48 @@ class MuestreoRelojes(threading.Thread):
         return {"sm_mhz_media": round(float(np.nanmean(sm)), 0), "sm_mhz_min": np.nanmin(sm),
                 "mem_mhz_media": round(float(np.nanmean([m["mem_mhz"] for m in self.muestras])), 0),
                 "pstates": "/".join(sorted({m["pstate"] for m in self.muestras})),
-                "potencia_w_media": round(float(np.nanmean([m["potencia_w"] for m in self.muestras])), 1),
+                # en WSL nvidia-smi no reporta la potencia ([N/A]): queda vacía
+                "potencia_w_media": round(float(np.nanmean(pot)), 1) if not np.isnan(pot := [m["potencia_w"] for m in self.muestras]).all() else "",
                 "temp_c_max": np.nanmax([m["temp_c"] for m in self.muestras])}
 
 
-def comprobar_sin_carga(cfg: dict) -> dict:
+def cpu_windows() -> float:
+    """Carga de CPU de Windows (%); desde WSL, psutil solo ve la carga de la máquina virtual. Mediana de 5 lecturas
+    en una sola llamada (cada lectura es instantánea y el arranque de powershell.exe produce un pico)."""
+    orden = ("Start-Sleep -Milliseconds 500; 1..5 | ForEach-Object { "
+             "(Get-CimInstance Win32_Processor | Measure-Object LoadPercentage -Average).Average; "
+             "Start-Sleep -Milliseconds 500 }")
+    try:
+        out = subprocess.check_output(["powershell.exe", "-NoProfile", "-Command", orden], text=True, timeout=60)
+        return float(np.median([float(x.replace(",", ".")) for x in out.split()]))
+    except (OSError, subprocess.SubprocessError, ValueError):
+        return float("nan")
+
+
+def comprobar_sin_carga(cfg: dict, etiqueta: str) -> dict:
+    """Aborta si hay otra carga. La carga de GPU es la carga efectiva (uso × reloj SM / reloj SM máximo),
+    promediada en varias lecturas: en reposo (P8, ~210 MHz) el escritorio de Windows (WDDM) marca ~10 % de "uso"
+    relativo a ese reloj bajo, que es < 1 % del cómputo disponible. Los procesos del escritorio de Windows no son
+    visibles desde WSL."""
     import psutil
 
     procs = procesos_gpu()
-    g = consulta_gpu()
-    cpu = psutil.cpu_percent(interval=2.0)
-    print(f"Estado inicial: procesos en GPU {len(procs)}, uso GPU {g['util_pct']} %, CPU {cpu} %, "
-          f"SM {g['sm_mhz']} MHz, memoria {g['mem_mhz']} MHz, {g['pstate']}", flush=True)
-    if procs or g["util_pct"] > cfg["max_util_gpu_pct"] or cpu > cfg["max_cpu_pct"]:
-        raise RuntimeError(f"El sistema no está libre (procesos GPU: {procs}, uso GPU {g['util_pct']} %, "
-                           f"CPU {cpu} %). D8 exige medir sin otra carga.")
-    return {f"inicio_{k}": v for k, v in g.items()} | {"inicio_cpu_pct": cpu}
+    muestras = []
+    for _ in range(cfg["muestras_carga"]):
+        muestras.append(consulta_gpu())
+        time.sleep(cfg["periodo_carga_s"])
+    util = float(np.mean([m["util_pct"] * m["sm_mhz"] / m["sm_max_mhz"] for m in muestras]))
+    cpu = psutil.cpu_percent(interval=1.0)
+    cpu_win = cpu_windows()
+    g = muestras[-1]
+    print(f"[{etiqueta}] procesos en GPU {len(procs)}, carga GPU efectiva {util:.1f} %, CPU WSL {cpu} %, "
+          f"CPU Windows {cpu_win} %, SM {g['sm_mhz']} MHz, memoria {g['mem_mhz']} MHz, {g['pstate']}", flush=True)
+    if (procs or util > cfg["max_util_gpu_pct"] or cpu > cfg["max_cpu_pct"]
+            or cpu_win > cfg["max_cpu_windows_pct"]):
+        raise RuntimeError(f"El sistema no está libre (procesos GPU: {procs}, carga GPU efectiva {util:.1f} %, CPU WSL {cpu} %, "
+                           f"CPU Windows {cpu_win} %). D8 exige medir sin otra carga.")
+    return {"previo_carga_gpu_efectiva_pct": round(util, 1), "previo_cpu_wsl_pct": cpu, "previo_cpu_windows_pct": cpu_win,
+            "previo_sm_mhz": g["sm_mhz"], "previo_mem_mhz": g["mem_mhz"], "previo_pstate": g["pstate"]}
 
 
 def medir(ruta: Path, formato: str, imagenes: list[np.ndarray], cfg: dict) -> tuple[list[dict], dict]:
@@ -123,10 +151,17 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--config", default=None)
     ap.add_argument("--modelos", nargs="*")
+    ap.add_argument("--reanudar", action="store_true", help="no repite los modelos que ya están en efficiency.csv")
+    ap.add_argument("--repeticiones", type=int, help="solo para la prueba de humo (D8 fija 3)")
+    ap.add_argument("--medidas", type=int, help="solo para la prueba de humo (D8 fija 500)")
     agregar_argumento(ap)
     a = ap.parse_args()
     cfg = cargar_yaml(a.config or ruta_config("bench.yaml", a.dataset))
     sal = {k: resolver_ruta(v) for k, v in cfg["salidas"].items()}
+    if a.repeticiones or a.medidas:  # prueba de humo: no escribe en results/
+        cfg["repeticiones"] = a.repeticiones or cfg["repeticiones"]
+        cfg["medidas"] = a.medidas or cfg["medidas"]
+        sal = {k: resolver_ruta(f"runs/smoke/bench_{k}.csv") for k in sal}
 
     with open(resolver_ruta(cfg["engines"]), encoding="utf-8") as f:
         engines = [r for r in csv.DictReader(f) if r["ruta"].startswith(cfg["prefijo_rutas"])
@@ -143,10 +178,18 @@ def main() -> None:
     imagenes = [np.asarray(Image.open(p).convert("RGB"))[:, :, ::-1].copy() for p in archivos]  # BGR, como cv2
     print(f"{len(imagenes)} imágenes de {cfg['split']} precargadas en memoria", flush=True)
 
-    inicio = comprobar_sin_carga(cfg)
     filas_rep, resumen = [], []
+    if a.reanudar and sal["resumen"].exists():  # conserva los modelos ya medidos (p. ej., tras un aborto por carga)
+        with open(sal["resumen"], encoding="utf-8") as f:
+            resumen = list(csv.DictReader(f))
+        with open(sal["crudo"], encoding="utf-8") as f:
+            filas_rep = list(csv.DictReader(f))
+        hechos = {(x["modelo"], x["formato"], x["precision"]) for x in resumen}
+        engines = [r for r in engines if (r["modelo"], r["formato"], r["precision"]) not in hechos]
+        print(f"Reanudando: {len(hechos)} ya medidos, faltan {len(engines)}", flush=True)
     for r in engines:
         ruta = resolver_ruta(r["ruta"])
+        inicio = comprobar_sin_carga(cfg, f"{r['modelo']} {r['formato']} {r['precision']}")
         t0 = time.perf_counter()
         reps, _ = medir(ruta, r["formato"], imagenes, cfg)
         base = {"modelo": r["modelo"], "formato": r["formato"], "precision": r["precision"], "MB": r["MB"]}
