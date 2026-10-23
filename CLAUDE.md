@@ -243,6 +243,8 @@ antes de ver los resultados reales.
   durante la medición.
 - Usar exactamente los engines registrados en `results/tables/engines.csv` (verificar el hash).
 - `results/tables/efficiency.csv`.
+- Reloj SM de la GPU fijado en 2505 MHz durante la medición (`scripts/benchmark.ps1`, decisión 2026-10-22) y cada
+  repetición de GPU validada (mediana del reloj SM en 2505 ± 50 MHz; si no, se repite). Ver protocol_deviations.csv.
 
 ### D9. Réplica en RDD2022-Japón (segundo dataset; decisión 2026-10-18)
 - Objetivo: repetir el estudio completo (D1–D8) con el subconjunto Japón de RDD2022 para tener dos datasets de
@@ -343,7 +345,7 @@ proyecto/
 - [x] Fase 5b — QAT (2026-10-19; 6 controles ModelOpt PTQ + 6 QAT, evaluados en test con `src/eval/evaluate.py`)
 - [x] Fase 6 — Evaluación (2026-10-18, PTQ: `results/metrics.csv`; los modelos QAT se evaluarán con el mismo `src/eval/evaluate.py`)
 - [x] Fase 7 — Estadística (2026-10-20, India: ninguna hipótesis rechaza H0 tras Holm; `results/tables/hypothesis_tests.csv`)
-- [ ] Fase 8 — Eficiencia
+- [x] Fase 8 — Eficiencia (2026-10-22, India: `results/tables/efficiency.csv`; reloj GPU fijado en 2505 MHz con `scripts/benchmark.ps1`)
 - [ ] Fase 9 — Tablas y figuras
 - [x] J1 — Datos Japón (2026-10-18; auditoría en `results/japan/tables/data_audit.csv`)
 - Réplica Japón (D9; decisiones confirmadas 2026-10-18). Todos los comandos con `--dataset japan`:
@@ -356,5 +358,5 @@ proyecto/
   - [ ] J5b — QAT: `bash scripts/qat.sh --dataset japan` (~7–9 h)
   - [ ] J6 — Evaluación en test: `bash scripts/evaluate.sh --dataset japan`
   - [ ] J7 — Estadística D7 (familia y Holm propios de Japón)
-  - [ ] J8 — Eficiencia D8
+  - [ ] J8 — Eficiencia D8: `powershell -ExecutionPolicy Bypass -File scripts\benchmark.ps1 --dataset japan` (PowerShell como administrador)
   - [ ] J9 — Tablas y figuras comparando India y Japón

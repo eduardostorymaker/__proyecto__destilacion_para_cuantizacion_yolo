@@ -53,7 +53,7 @@ entrenamiento.
 | 5b | QAT con NVIDIA ModelOpt | ✅ |
 | 6 | Evaluación en test (mAP, ECE) | ✅ PTQ (la QAT se evalúa con el mismo código) |
 | 7 | Estadística (bootstrap, Holm) | ✅ India |
-| 8 | Eficiencia (latencia, FPS, tamaño) | pendiente |
+| 8 | Eficiencia (latencia, FPS, tamaño) | ✅ India |
 | 9 | Tablas y figuras del paper | pendiente |
 | J1 | Réplica en Japón: datos y auditoría | ✅ |
 | J2–J9 | Réplica en Japón: maestro, alumnos, cuantización, evaluación, estadística | ⏳ J2–J3 hechos; J4 siguiente (ver checklist) |
@@ -417,12 +417,41 @@ En India la KD no reduce de forma significativa la pérdida por cuantización ni
 KD con PTQ no alcanza a un alumno base con QAT. Detalle y exploratorios en `results/tables/hypothesis_tests.csv` y
 `results/tables/exploratory.csv`.
 
-### Fases 8 y 9 — Pendientes
+### Fase 8 — Eficiencia (India)
 
-| Fase | Qué hará |
-|---|---|
-| 8 — Eficiencia | Latencia, FPS y tamaño en GPU (TensorRT) y CPU (OpenVINO); sin otra carga, 3 repeticiones |
-| 9 — Reporte | Tablas III–V y figuras del paper |
+`powershell -ExecutionPolicy Bypass -File scripts\benchmark.ps1` en **PowerShell como administrador** (fija el reloj
+SM de la GPU en 2505 MHz con `nvidia-smi -lgc`, lanza `scripts/benchmark.sh` en Ubuntu y lo restablece al terminar;
+`--reanudar` continúa tras un aborto). Configuración en `configs/bench.yaml`.
+
+- Se miden los 45 engines registrados (hash verificado): batch 1, imgsz 640, 3 repeticiones × (50 calentamientos +
+  500 medidas) con imágenes de test precargadas en memoria; preproceso, inferencia y postproceso (NMS) por separado.
+- Sistema sin otra carga: antes de cada modelo se comprueba que no haya procesos de cómputo en la GPU, que la carga
+  efectiva de la GPU (uso × reloj / reloj máximo) sea ≤ 10 % y que la CPU de WSL y de Windows sea ≤ 20 %.
+- Reloj fijado y validado: cada repetición de GPU es válida solo si la mediana del reloj SM está en 2505 ± 50 MHz
+  (el driver bajaba el reloj con batch 1 y duplicaba la latencia). Se registran relojes SM y de memoria, estado de
+  energía y temperatura.
+- Salidas: `results/tables/efficiency.csv` (por modelo) y `efficiency_reps.csv` (por repetición).
+
+Latencia de inferencia (mediana, media ± d.e. de 3 semillas):
+
+| Motor | Precisión | Alumno base | Alumno KD | Maestro 11m | MB (alumno) |
+|---|---|---|---|---|---|
+| TensorRT (RTX 4060) | FP32 | 1.69 ± 0.01 ms · 587 FPS | 1.68 ± 0.02 ms · 591 FPS | 8.62 ms · 115 FPS | 12.9 |
+| | FP16 | 0.87 ± 0.02 ms · 1144 FPS | 0.86 ± 0.01 ms · 1148 FPS | 2.99 ms · 332 FPS | 7.5 |
+| | INT8 PTQ | 0.70 ± 0.00 ms · 1413 FPS | 0.71 ± 0.01 ms · 1403 FPS | 1.92 ms · 516 FPS | 4.5 |
+| | INT8 ModelOpt PTQ | 0.83 ± 0.03 ms · 1190 FPS | 0.81 ± 0.01 ms · 1216 FPS | — | 4.5 |
+| | INT8 QAT | 0.81 ± 0.01 ms · 1224 FPS | 0.82 ± 0.01 ms · 1204 FPS | — | 4.5 |
+| OpenVINO (i7-12700KF) | FP32 | 15.2 ± 0.2 ms · 65 FPS | 15.4 ± 0.2 ms · 64 FPS | — | 10.2 |
+| | INT8 | 8.2 ± 0.3 ms · 111 FPS | 7.9 ± 0.1 ms · 112 FPS | — | 3.2 |
+
+- Base y KD tienen la misma eficiencia (misma arquitectura; los adaptadores CWD no se exportan).
+- INT8 es 2.4× más rápido que FP32 en GPU y 1.9× en CPU, con un tercio del tamaño. El INT8 con Q/DQ explícito
+  (ModelOpt y QAT) es ~15 % más lento que la PTQ implícita de TensorRT.
+- Variación entre repeticiones: mediana 0.07 % (máx. 2 %) en GPU; mediana 4 % (máx. 12 %) en CPU.
+
+### Fase 9 — Pendiente
+
+Tablas III–V y figuras del paper.
 
 El plan estadístico (hipótesis, α, δ y número de remuestreos) está fijado de antemano en
 [CLAUDE.md](CLAUDE.md), sección D7, y no se cambia después de ver resultados.
@@ -467,7 +496,7 @@ de `configs/japan/` (mismos nombres de archivo que en India). Checklist:
 | J5b — QAT | `bash scripts/qat.sh --dataset japan` | 7–9 h | pendiente |
 | J6 — Evaluación en test | `bash scripts/evaluate.sh --dataset japan` | < 1 h | pendiente |
 | J7 — Estadística | familia D7 y Holm propios de Japón | — | pendiente |
-| J8 — Eficiencia | D8 | — | pendiente |
+| J8 — Eficiencia | `powershell -ExecutionPolicy Bypass -File scripts\benchmark.ps1 --dataset japan` (administrador) | ~15 min | pendiente |
 | J9 — Tablas y figuras | comparación India vs. Japón | — | pendiente |
 
 Decisiones confirmadas antes de ver resultados de Japón (D9): solo maestro YOLO11m, piloto de λ propio y

@@ -807,3 +807,46 @@ Resultados en test, TensorRT (Δ = FP32 − cuantizado; media ± d.e. de 3 semil
   A diferencia de India, la variabilidad entre semillas es muy baja (d.e. 0.001), así que la ventaja del maestro es
   clara frente al ruido.
 - **Resultado: J3 completada.** Siguiente: J4a (humo y verificación KD con el maestro de Japón).
+
+## 2026-10-22 — Fase 8: eficiencia (India)
+
+- `powershell -ExecutionPolicy Bypass -File scripts\benchmark.ps1` (PowerShell como administrador) →
+  `results/tables/efficiency.csv` (45 engines) y `efficiency_reps.csv` (135 repeticiones). Configuración en
+  `configs/bench.yaml`: batch 1, imgsz 640, 3 repeticiones × (50 calentamientos + 500 medidas), imágenes de test
+  precargadas, conf 0.25 / iou 0.7 en el NMS (uso real). Hashes verificados. Driver 616.92, CUDA 13.4 (driver) /
+  13.0 (torch), TensorRT 10.16.1.11, OpenVINO 2026.4.0.
+- Problemas resueltos antes de la medición definitiva:
+  1. La comprobación de "sin carga" usaba una lectura instantánea del uso de GPU: en reposo (P8, 210 MHz) el escritorio
+     de Windows marca ~10 % relativo a ese reloj bajo. Se cambió a carga efectiva (uso × reloj SM / reloj máximo),
+     promediada en 5 s, y se agregó la CPU de Windows (desde WSL psutil solo ve la máquina virtual). Se comprueba
+     antes de cada modelo; `--reanudar` continúa tras un aborto.
+  2. Error del script: el hilo que muestreaba los relojes no se detenía en los modelos OpenVINO; los hilos acumulados
+     lanzaban nvidia-smi y degradaban la latencia de CPU (15.7 → 19.3 ms en modelos idénticos). Corregido (relojes
+     solo en GPU, con NVML dentro del proceso). Esa corrida se descartó entera.
+  3. Con batch 1 el driver bajaba el reloj SM de forma intermitente (2730 → 1080 MHz; TRT FP32 1.56 → 3.3 ms),
+     con o sin muestreo. Decisión del usuario: fijar el reloj SM en 2505 MHz (`nvidia-smi -lgc`, restablecido con
+     `-rgc` al terminar) y validar cada repetición de GPU (mediana del reloj SM en 2505 ± 50 MHz; si no, se repite,
+     máx. 3 reintentos). Registrado en protocol_deviations.csv.
+- Medición definitiva: 43 modelos en una corrida; abortó antes de kd_s2 OpenVINO (CPU de Windows 21 % > 20 %) y los
+  2 restantes se midieron con `--reanudar` minutos después. Reloj SM = 2505 MHz en las 99 repeticiones de GPU, sin
+  reintentos; temperatura máx. 63 °C; potencia no disponible en WSL. Variación entre repeticiones (CV de la mediana):
+  GPU mediana 0.07 % (máx. 2 %), CPU mediana 4 % (máx. 12 %).
+
+Latencia de inferencia (mediana; media ± d.e. de 3 semillas) y FPS = 1000 / latencia media:
+
+| Motor | Precisión | Alumno base | Alumno KD | Maestro 11m | MB alumno |
+|---|---|---|---|---|---|
+| TRT | FP32 | 1.686 ± 0.014 ms · 587 FPS | 1.678 ± 0.016 ms · 591 FPS | 8.615 ms · 115 FPS | 12.9 |
+| TRT | FP16 | 0.866 ± 0.015 ms · 1144 FPS | 0.859 ± 0.012 ms · 1148 FPS | 2.990 ms · 332 FPS | 7.5 |
+| TRT | INT8 PTQ | 0.698 ± 0.001 ms · 1413 FPS | 0.705 ± 0.013 ms · 1403 FPS | 1.921 ms · 516 FPS | 4.5 |
+| TRT | INT8 ModelOpt PTQ | 0.830 ± 0.031 ms · 1190 FPS | 0.813 ± 0.006 ms · 1216 FPS | — | 4.5 |
+| TRT | INT8 QAT | 0.808 ± 0.007 ms · 1224 FPS | 0.818 ± 0.006 ms · 1204 FPS | — | 4.5 |
+| OV CPU | FP32 | 15.19 ± 0.25 ms · 65 FPS | 15.35 ± 0.23 ms · 64 FPS | — | 10.2 |
+| OV CPU | INT8 | 8.18 ± 0.26 ms · 111 FPS | 7.89 ± 0.11 ms · 112 FPS | — | 3.2 |
+
+- Preproceso ~0.86 ms (GPU) / 1.2 ms (CPU); postproceso (NMS) ~0.3 ms (GPU) / 0.5 ms (CPU), iguales entre modelos.
+- Lectura: base y KD tienen la misma eficiencia (misma arquitectura; los adaptadores no se exportan). INT8 PTQ es
+  2.4× más rápido que FP32 en GPU y 1.9× en CPU, con ~1/3 del tamaño. El INT8 con Q/DQ explícito (ModelOpt PTQ y
+  QAT) es ~15 % más lento que la PTQ implícita (menos fusión de capas), un costo práctico de la QAT. En INT8 el
+  preproceso ya pesa más que la inferencia en GPU.
+- **Resultado: Fase 8 (India) completada.**

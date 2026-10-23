@@ -25,6 +25,8 @@ CORRIDAS = [
     ("4b — Alumnos KD", "student_kd_s0..s2", "runs/students/student_kd_s*"),
     ("5b — QAT", "qat_{base,kd}_s0..s2 (ajuste fino)", "runs/qat/qat_*"),
     ("Exploración", "maestro YOLO11l, 3 épocas", "runs/exploracion/teacher_l_3ep"),
+    ("J2 — Maestro (Japón)", "YOLO11m teacher_s0", "runs/japan/teacher/teacher_s0"),
+    ("J3 — Alumnos base (Japón)", "student_base_s0..s2", "runs/japan/students/student_base_s*"),
 ]
 
 # Sin results.csv: estimaciones a partir de LOG.md
@@ -36,6 +38,8 @@ ESTIMADOS = [
     ("Exploración", "ptq_check (9 engines + 15 evaluaciones en val)", 1.0, "LOG 2026-10-03"),
     ("Exploración", "diagnóstico del maestro INT8 (OV + evaluaciones + activaciones)", 0.2, "LOG 2026-10-18"),
     ("Pruebas de humo", "maestros, alumnos, KD, piloto, QAT", 0.3, "suma aproximada de las pruebas de humo"),
+    ("8 — Eficiencia", "45 engines × 3 repeticiones + pruebas de humo y diagnósticos", 0.5,
+     "LOG 2026-10-22: ~15 min la medición completa"),
 ]
 
 
