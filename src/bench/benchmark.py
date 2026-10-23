@@ -7,8 +7,13 @@
 - Sistema sin otra carga: antes de empezar se comprueba que no haya procesos en la GPU y que la carga de CPU sea
   baja; si no, se aborta. Durante cada repetición se muestrean los relojes de la GPU (SM, memoria, estado de
   energía, potencia, temperatura).
+- Reloj de la GPU fijado (scripts/benchmark.ps1, nvidia-smi -lgc) para que el ahorro de energía del driver no
+  cambie la latencia entre modelos; cada repetición de GPU se valida con la mediana del reloj SM (reloj fijado ±
+  tolerancia) y, si no cumple, se repite (máx. max_reintentos).
 
-Uso (desde la raíz del proyecto, en WSL, con el equipo sin otra carga):
+Uso: en PowerShell como administrador (fija el reloj, mide y lo restablece):
+    powershell -ExecutionPolicy Bypass -File scriptsenchmark.ps1 [--dataset japan] [--reanudar]
+Directo en WSL (el reloj debe estar fijado antes):
     python -m src.bench.benchmark
     python -m src.bench.benchmark --dataset japan
     python -m src.bench.benchmark --modelos student_base_s0     # subconjunto
@@ -81,7 +86,8 @@ class MuestreoRelojes(threading.Thread):
         if not self.muestras:
             return {}
         sm = [m["sm_mhz"] for m in self.muestras]
-        return {"sm_mhz_media": round(float(np.nanmean(sm)), 0), "sm_mhz_min": np.nanmin(sm),
+        return {"sm_mhz_mediana": float(np.nanmedian(sm)), "sm_mhz_media": round(float(np.nanmean(sm)), 0),
+                "sm_mhz_min": np.nanmin(sm), "muestras_reloj": len(sm),
                 "mem_mhz_media": round(float(np.nanmean([m["mem_mhz"] for m in self.muestras])), 0),
                 "pstates": "/".join(sorted({m["pstate"] for m in self.muestras})),
                 # en WSL NVML no reporta la potencia: queda vacía
@@ -137,28 +143,46 @@ def medir(ruta: Path, formato: str, imagenes: list[np.ndarray], cfg: dict) -> tu
               verbose=False, save=False)
     reps, n = [], len(imagenes)
     for r in range(cfg["repeticiones"]):
-        for i in range(cfg["calentamiento"]):
-            modelo.predict(imagenes[i % n], **kw)
-        # Relojes de la GPU solo para los engines de GPU. (Antes el hilo se iniciaba también en CPU y nunca se
-        # detenía: los hilos acumulados cargaban la CPU y degradaban la latencia de OpenVINO.)
-        relojes = MuestreoRelojes(cfg["muestreo_relojes_s"]) if formato != "openvino" else None
-        if relojes:
-            relojes.start()
-        t = {"preproceso": [], "inferencia": [], "postproceso": []}
-        try:
-            for i in range(cfg["medidas"]):
-                s = modelo.predict(imagenes[(cfg["calentamiento"] + i) % n], **kw)[0].speed
-                t["preproceso"].append(s["preprocess"]); t["inferencia"].append(s["inference"])
-                t["postproceso"].append(s["postprocess"])
-        finally:
-            reloj = relojes.detener() if relojes else {}
-        fila = {"repeticion": r + 1}
-        for k, xs in t.items():
-            fila[f"{k}_ms_mediana"] = round(float(np.median(xs)), 4)
-            fila[f"{k}_ms_media"] = round(float(np.mean(xs)), 4)
-        fila["fps"] = round(1000 / fila["inferencia_ms_media"], 1)
-        reps.append(fila | reloj)
+        for intento in range(cfg["max_reintentos"] + 1):
+            fila, valida = repeticion(modelo, formato, imagenes, kw, cfg)
+            if valida:
+                break
+            print(f"  repetición {r + 1}: reloj SM mediano {fila['sm_mhz_mediana']:.0f} MHz fuera de "
+                  f"{cfg['reloj_fijo_sm_mhz']} ± {cfg['tolerancia_reloj_mhz']} MHz; se repite", flush=True)
+        else:
+            raise RuntimeError(f"El reloj de la GPU no se mantuvo en {cfg['reloj_fijo_sm_mhz']} MHz tras "
+                               f"{cfg['max_reintentos']} reintentos. ¿Se fijó con scripts/benchmark.ps1?")
+        reps.append({"repeticion": r + 1, "reintentos": intento} | fila)
     return reps, {}
+
+
+def repeticion(modelo, formato: str, imagenes: list[np.ndarray], kw: dict, cfg: dict) -> tuple[dict, bool]:
+    """Una repetición completa (calentamiento + medidas). En GPU es válida solo si la mediana del reloj SM
+    durante las medidas está en el reloj fijado ± tolerancia (el driver puede bajar el reloj con batch 1)."""
+    n = len(imagenes)
+    for i in range(cfg["calentamiento"]):
+        modelo.predict(imagenes[i % n], **kw)
+    # Relojes de la GPU solo para los engines de GPU. (Antes el hilo se iniciaba también en CPU y nunca se
+    # detenía: los hilos acumulados cargaban la CPU y degradaban la latencia de OpenVINO.)
+    relojes = MuestreoRelojes(cfg["muestreo_relojes_s"]) if formato != "openvino" else None
+    if relojes:
+        relojes.start()
+    t = {"preproceso": [], "inferencia": [], "postproceso": []}
+    try:
+        for i in range(cfg["medidas"]):
+            s = modelo.predict(imagenes[(cfg["calentamiento"] + i) % n], **kw)[0].speed
+            t["preproceso"].append(s["preprocess"]); t["inferencia"].append(s["inference"])
+            t["postproceso"].append(s["postprocess"])
+    finally:
+        reloj = relojes.detener() if relojes else {}
+    fila = {}
+    for k, xs in t.items():
+        fila[f"{k}_ms_mediana"] = round(float(np.median(xs)), 4)
+        fila[f"{k}_ms_media"] = round(float(np.mean(xs)), 4)
+    fila["fps"] = round(1000 / fila["inferencia_ms_media"], 1)
+    valida = (not relojes or
+              abs(reloj.get("sm_mhz_mediana", 0) - cfg["reloj_fijo_sm_mhz"]) <= cfg["tolerancia_reloj_mhz"])
+    return fila | reloj, valida
 
 
 def main() -> None:
@@ -217,8 +241,9 @@ def main() -> None:
             "preproceso_ms_mediana": round(st.mean(x["preproceso_ms_mediana"] for x in reps), 4),
             "postproceso_ms_mediana": round(st.mean(x["postproceso_ms_mediana"] for x in reps), 4),
             "fps": round(1000 / st.mean(inf_media), 1),
-            "sm_mhz_media": round(st.mean(x.get("sm_mhz_media", float("nan")) for x in reps), 0) if r["formato"] != "openvino" else "",
-            "repeticiones": len(reps),
+            "sm_mhz_media": round(st.mean(float(x.get("sm_mhz_media", "nan")) for x in reps), 0) if r["formato"] != "openvino" else "",
+            "reloj_fijo_sm_mhz": cfg["reloj_fijo_sm_mhz"] if r["formato"] != "openvino" else "",
+            "repeticiones": len(reps), "reintentos": sum(x["reintentos"] for x in reps),
         } | sistema | inicio
         resumen.append(fila)
         print(f"{r['modelo']:<16} {r['formato']:<9} {r['precision']:<10} inferencia {fila['inferencia_ms_mediana']:.3f} ms "

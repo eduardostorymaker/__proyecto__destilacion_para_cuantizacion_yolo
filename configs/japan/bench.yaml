@@ -27,6 +27,13 @@ muestras_carga: 10
 periodo_carga_s: 0.5
 muestreo_relojes_s: 0.1                # muestreo de relojes de la GPU durante cada repetición
 
+# Reloj de la GPU (decisión 2026-10-22): con batch 1 el driver puede bajar el reloj SM (p. ej., de 2730 a 1080 MHz,
+# latencia ×2). Se fija con nvidia-smi -lgc en scripts/benchmark.ps1 y cada repetición de GPU se valida: la mediana
+# del reloj SM durante las medidas debe estar en reloj_fijo_sm_mhz ± tolerancia_reloj_mhz; si no, se repite.
+reloj_fijo_sm_mhz: 2505
+tolerancia_reloj_mhz: 50
+max_reintentos: 3
+
 salidas:
   crudo: results/japan/tables/efficiency_reps.csv   # una fila por modelo y repetición
   resumen: results/japan/tables/efficiency.csv      # una fila por modelo (media ± d.e. entre repeticiones)
