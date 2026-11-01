@@ -2,7 +2,10 @@
 
 ## Contexto de investigación (leer antes de cualquier tarea)
 
-Paper IEEE (máx. 8 págs.). El paper (v3) ya está escrito con este diseño: todo debe coincidir.
+Paper IEEE (máx. 10 págs. de contenido, sin contar los apéndices), en LaTeX: `paper/main.tex`. La fuente de
+verdad del diseño y de los resultados es ESTE repositorio (configs, LOG, CSV); el paper se escribió por separado y
+debe ajustarse al repo, no al revés. No editar el paper: el usuario lo corrige (lista de correcciones pendientes
+en la memoria del proyecto, hasta que el usuario avise).
 Tres preguntas:
 
 - **P1.** ¿La destilación de conocimiento (KD) reduce la pérdida de mAP por cuantización INT8 en
@@ -16,8 +19,8 @@ Karjol y Hanna (2026, arXiv:2604.26857, preprint no revisado): en BDD100K, KD NO
 pérdida de mAP (0.030 vs 0.031) pero sí conservó mayor precisión en INT8; una sola corrida y
 solo PTQ.
 
-Nota: la búsqueda en Scopus se usó solo para identificar la brecha; PRISMA ya no forma parte de
-la metodología.
+Nota: la búsqueda de antecedentes en Scopus se reporta con PRISMA 2020 (apéndices del paper). PRISMA se queda
+(decisión del usuario, 2026-10-31).
 
 ## Hardware y entorno
 
@@ -263,6 +266,11 @@ antes de ver los resultados reales.
   - λ: se repite el piloto en Japón (λ ∈ {0.5, 1.0, 2.0}, seed 0, 50 épocas, elegir por mAP@0.5:0.95 de val).
   - Estadística: análisis D7 completo por separado en cada dataset (cada uno con su familia de 5 contrastes y su
     corrección de Holm); la coincidencia entre datasets se reporta de forma descriptiva.
+- Eficiencia en Japón (decisión 2026-10-31, opción 2): el paper reporta la eficiencia una sola vez, con India
+  (la latencia depende de la arquitectura, no de los datos). La J8 se ejecuta igual, al final del pipeline y sin
+  prioridad, solo como VERIFICACIÓN: diferencia relativa de latencia de inferencia Japón vs. India por motor y
+  precisión, para respaldar esa afirmación con un dato ("en Japón la latencia difirió menos de X %").
+  Las tablas del paper no cambian.
 - Ejecución: todos los scripts aceptan `--dataset japan` (por defecto `india`), que toma la configuración de
   `configs/japan/` en lugar de `configs/`.
 - Diferencias de los datos (auditoría J1): Japón tiene 10 506 imágenes (1.36× India), 24.8 % de fondo (India
@@ -346,17 +354,17 @@ proyecto/
 - [x] Fase 6 — Evaluación (2026-10-18, PTQ: `results/metrics.csv`; los modelos QAT se evaluarán con el mismo `src/eval/evaluate.py`)
 - [x] Fase 7 — Estadística (2026-10-20, India: ninguna hipótesis rechaza H0 tras Holm; `results/tables/hypothesis_tests.csv`)
 - [x] Fase 8 — Eficiencia (2026-10-22, India: `results/tables/efficiency.csv`; reloj GPU fijado en 2505 MHz con `scripts/benchmark.ps1`)
-- [ ] Fase 9 — Tablas y figuras
+- [x] Fase 9 — Tablas y figuras (2026-10-31, India: `python -m src.report.paper_tables` → `results/tables/paper/`; columnas JP en J9)
 - [x] J1 — Datos Japón (2026-10-18; auditoría en `results/japan/tables/data_audit.csv`)
 - Réplica Japón (D9; decisiones confirmadas 2026-10-18). Todos los comandos con `--dataset japan`:
   - [x] J2 — Maestro YOLO11m (2026-10-20; best.pt época 81, val mAP@0.5 0.571 / mAP@0.5:0.95 0.277)
   - [x] J3 — Alumnos base s0–s2 (2026-10-21; val mAP@0.5 0.5529 ± 0.0012; maestro +1.8 puntos)
-  - [ ] J4a — Humo y verificación KD con el maestro de Japón: `--kd on --seed 0 --humo --dataset japan` + `check_kd`
-  - [ ] J4b — Piloto λ: `bash scripts/pilot_lambda.sh japan` (~4 h) → fijar λ en `configs/japan/kd.yaml`
+  - [x] J4a — Humo y verificación KD con el maestro de Japón (2026-10-31, TODO OK): `--kd on --seed 0 --humo --dataset japan` + `check_kd`
+  - [x] J4b — Piloto λ (2026-10-31; λ = 1.0, val mAP@0.5:0.95 0.2500): `bash scripts/pilot_lambda.sh japan` (~4 h) → fijar λ en `configs/japan/kd.yaml`
   - [ ] J4c — Alumnos KD s0–s2: `for s in 0 1 2; do bash scripts/train_student.sh --kd on --seed $s --dataset japan; done` (~26 h)
   - [ ] J5 — PTQ: `bash scripts/export_all.sh --dataset japan` (~2 h)
   - [ ] J5b — QAT: `bash scripts/qat.sh --dataset japan` (~7–9 h)
   - [ ] J6 — Evaluación en test: `bash scripts/evaluate.sh --dataset japan`
   - [ ] J7 — Estadística D7 (familia y Holm propios de Japón)
-  - [ ] J8 — Eficiencia D8: `powershell -ExecutionPolicy Bypass -File scripts\benchmark.ps1 --dataset japan` (PowerShell como administrador)
-  - [ ] J9 — Tablas y figuras comparando India y Japón
+  - [ ] J8 — Eficiencia D8, solo como verificación frente a India (al final, sin prioridad; ver D9): `powershell -ExecutionPolicy Bypass -File scripts\benchmark.ps1 --dataset japan` (PowerShell como administrador)
+  - [ ] J9 — Tablas y figuras comparando India y Japón: volver a ejecutar `python -m src.report.paper_tables`

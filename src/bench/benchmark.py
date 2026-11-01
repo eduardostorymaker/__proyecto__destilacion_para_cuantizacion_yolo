@@ -1,4 +1,4 @@
-"""Fase 8: eficiencia (D8). Latencia y FPS con batch 1 en GPU (TensorRT) y CPU (OpenVINO).
+r"""Fase 8: eficiencia (D8). Latencia y FPS con batch 1 en GPU (TensorRT) y CPU (OpenVINO).
 
 - Solo se miden los engines registrados en results/tables/engines.csv; antes de medir se verifica su hash.
 - Por modelo: 3 repeticiones, cada una con 50 calentamientos + 500 medidas sobre imágenes de test precargadas
@@ -12,7 +12,7 @@
   tolerancia) y, si no cumple, se repite (máx. max_reintentos).
 
 Uso: en PowerShell como administrador (fija el reloj, mide y lo restablece):
-    powershell -ExecutionPolicy Bypass -File scriptsenchmark.ps1 [--dataset japan] [--reanudar]
+    powershell -ExecutionPolicy Bypass -File scripts\benchmark.ps1 [--dataset japan] [--reanudar]
 Directo en WSL (el reloj debe estar fijado antes):
     python -m src.bench.benchmark
     python -m src.bench.benchmark --dataset japan

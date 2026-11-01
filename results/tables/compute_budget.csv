@@ -9,6 +9,7 @@ fase,concepto,corridas,horas_gpu,fuente
 5b — QAT,"qat_{base,kd}_s0..s2 (ajuste fino)",6,6.42,medido (runs/qat/qat_*/results.csv)
 J2 — Maestro (Japón),YOLO11m teacher_s0,1,5.6,medido (runs/japan/teacher/teacher_s0/results.csv)
 J3 — Alumnos base (Japón),student_base_s0..s2,3,11.28,medido (runs/japan/students/student_base_s*/results.csv)
+J4b — Piloto de λ (Japón),"pilot_kd_l{0.5,1.0,2.0}_s0",3,4.45,medido (runs/japan/pilot/pilot_kd_*/results.csv)
 5 — Exportación PTQ,33 exportaciones,33,1.35,medido (results/tables/exports.csv)
 5b — Exportación QAT y control,12 exportaciones,12,0.67,medido (results/tables/exports.csv)
 1b — Pruebas de tiempo,maestro FP32 (detenido en la época 2) + forward del maestro,,0.5,estimado (LOG 2026-09-28: época 1 de 947 s y época 2 al 79 %)
@@ -17,4 +18,4 @@ Exploración,ptq_check (9 engines + 15 evaluaciones en val),,1.0,estimado (LOG 2
 Exploración,diagnóstico del maestro INT8 (OV + evaluaciones + activaciones),,0.2,estimado (LOG 2026-10-18)
 Pruebas de humo,"maestros, alumnos, KD, piloto, QAT",,0.3,estimado (suma aproximada de las pruebas de humo)
 8 — Eficiencia,45 engines × 3 repeticiones + pruebas de humo y diagnósticos,,0.5,estimado (LOG 2026-10-22: ~15 min la medición completa)
-TOTAL,,,72.6,
+TOTAL,,,77.0,

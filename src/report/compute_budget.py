@@ -27,6 +27,8 @@ CORRIDAS = [
     ("Exploración", "maestro YOLO11l, 3 épocas", "runs/exploracion/teacher_l_3ep"),
     ("J2 — Maestro (Japón)", "YOLO11m teacher_s0", "runs/japan/teacher/teacher_s0"),
     ("J3 — Alumnos base (Japón)", "student_base_s0..s2", "runs/japan/students/student_base_s*"),
+    ("J4b — Piloto de λ (Japón)", "pilot_kd_l{0.5,1.0,2.0}_s0", "runs/japan/pilot/pilot_kd_*"),
+    ("J4c — Alumnos KD (Japón)", "student_kd_s0..s2", "runs/japan/students/student_kd_s*"),
 ]
 
 # Sin results.csv: estimaciones a partir de LOG.md

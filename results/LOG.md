@@ -850,3 +850,57 @@ Latencia de inferencia (mediana; media ± d.e. de 3 semillas) y FPS = 1000 / lat
   QAT) es ~15 % más lento que la PTQ implícita (menos fusión de capas), un costo práctico de la QAT. En INT8 el
   preproceso ya pesa más que la inferencia en GPU.
 - **Resultado: Fase 8 (India) completada.**
+
+## 2026-10-31 — J4a: prueba de humo y verificación de la KD con el maestro de Japón
+
+- Corrida: `bash scripts/train_student.sh --kd on --seed 0 --humo --dataset japan` (2 épocas, fraction 0.05,
+  λ = 1.0, maestro `runs/japan/teacher/teacher_s0/weights/best.pt`) → `runs/japan/smoke/student_kd_s0_humo`.
+- Adaptadores 1×1: canales del alumno [64, 128, 256] → maestro [256, 512, 512] (214 272 parámetros, no se guardan).
+- `python -m src.train.check_kd --kd runs/japan/smoke/student_kd_s0_humo --base runs/japan/smoke/student_base_s0_humo`:
+  - L_CWD finita y decreciente: 1.4119 → 1.3856 (L_det 11.44 → 10.64; escala razonable frente a L_det).
+  - best.pt KD con las mismas 499 claves/formas que el base, sin claves del maestro ni de adaptadores.
+  - ONNX KD y base con el mismo número de parámetros (2 624 974).
+  - **RESULTADO: TODO OK.** Siguiente: J4b, piloto de λ (`bash scripts/pilot_lambda.sh japan`).
+
+## 2026-10-31 — Fase 9: tablas y figura del paper (India)
+
+- Nuevo `src/report/paper_tables.py` + `configs/report.yaml`. Solo lee resultados ya calculados y genera las tablas
+  de resultados de `paper/main.tex` (numeración nueva del LaTeX: III partición, V FP32, VI cuantización,
+  VII contrastes, VIII eficiencia) en `results/tables/paper/` (CSV, Markdown y filas LaTeX), con columnas IN y JP
+  (JP en "—" hasta J9), y la figura `results/figures/map_vs_cuantizacion.{png,pdf}`.
+- Tabla V (TensorRT FP32, test): maestro 0.329; base 0.310 ± 0.020; destilado 0.316 ± 0.005 de mAP@0.5.
+- Tabla VI: ΔmAP@0.5 PTQ INT8 base 0.035 ± 0.009 / destilado 0.031 ± 0.007; QAT 0.006 ± 0.003 / 0.011 ± 0.009;
+  maestro PTQ INT8 0.178 (su ECE no está definido: ninguna detección con confianza ≥ 0.25).
+- Tabla VIII usa la latencia media (FPS = 1000 / media, D8): CPU INT8 8.98 ms (la mediana, ≈ 8.0 ms, es la que se
+  citó en la entrada de la Fase 8); GPU INT8 0.71 ms frente a 1.70 ms en FP32.
+- Japón: la partición (J1) ya aparece en la Tabla III; las demás columnas se llenan volviendo a ejecutar el script.
+- Corrección menor: en el docstring de `src/bench/benchmark.py` había un carácter de retroceso (`\b` de
+  `scripts\benchmark.ps1`); se volvió cadena raw.
+
+## 2026-10-31 — Decisiones: PRISMA, extensión del paper y J8
+
+- El paper (`paper/main.tex`, LaTeX) conserva PRISMA 2020 en los apéndices; límite de 10 páginas de contenido sin
+  contar apéndices. La fuente de verdad es este repositorio; las correcciones al paper las aplica el usuario más
+  adelante (lista guardada, pendiente de su aviso).
+- J8 (eficiencia en Japón): se mantiene en el plan solo como verificación, al final y sin prioridad. El paper reporta
+  la eficiencia una vez (India); la J8 da la diferencia relativa de latencia Japón vs. India para respaldarlo.
+- README: se agregaron las tablas III, V, VI, VII y VIII de India y la figura de la Fase 9.
+
+## 2026-10-31 — J4b: piloto de λ en Japón
+
+- Corrida: `bash scripts/pilot_lambda.sh japan` (λ ∈ {0.5, 1.0, 2.0}, seed 0, 50 épocas, maestro YOLO11m de Japón);
+  ~1.48 h por corrida (4.4 h en total). Revalidación de best.pt en val (batch 8, conf 0.001, iou 0.7):
+
+| λ | L_CWD época 1 → 50 | ¿Baja? | λ·L_CWD / L_det (final) | NaN | val mAP@0.5 | **val mAP@0.5:0.95** | AP@0.5 D40 | mAP@0.5 sin D10 |
+|---|---|---|---|---|---|---|---|---|
+| 0.5 | 1.414 → 0.397 | sí | 4.2 % | no | 0.5169 | 0.2424 | 0.5091 | 0.5582 |
+| **1.0** | 1.372 → 0.346 | sí | 7.4 % | no | 0.5260 | **0.2500** | 0.5246 | 0.5683 |
+| 2.0 | 1.308 → 0.302 | sí | 13.0 % | no | 0.5279 | 0.2462 | 0.5088 | 0.5641 |
+
+- Regla preespecificada (mayor mAP@0.5:0.95 de validación) → **λ = 1.0**, igual que en India. Fijado en
+  `configs/japan/kd.yaml`. λ = 1.0 también gana en AP de D40 y en mAP sin D10; λ = 2.0 tiene la mayor mAP@0.5 por
+  0.002.
+- Escala de L_CWD razonable frente a L_det (4–13 %) y decreciente en las tres corridas, como en India.
+- Las diferencias son pequeñas (0.4–0.8 puntos de mAP@0.5:0.95, con una sola semilla y 50 épocas, curvas aún
+  subiendo); se aplica la regla tal cual, sin reinterpretarla.
+- Siguiente: J4c, alumnos KD s0–s2 de Japón (~27 h; ~8.9 h por semilla según el piloto).

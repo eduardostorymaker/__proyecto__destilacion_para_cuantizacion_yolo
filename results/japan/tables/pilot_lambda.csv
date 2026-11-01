@@ -1,0 +1,4 @@
+lambda,epocas,L_CWD_ep1,L_CWD_ult,L_CWD_baja,L_det_ult,peso_lambdaCWD_sobre_Ldet_pct,nan,val_mAP50,val_mAP50_95,val_AP50_D40,val_mAP50_sin_D10
+0.5,50,1.4139,0.397,True,4.744,4.2,False,0.5169,0.2424,0.5091,0.5582
+1.0,50,1.3717,0.3461,True,4.7045,7.4,False,0.526,0.25,0.5246,0.5683
+2.0,50,1.3077,0.3017,True,4.6578,13.0,False,0.5279,0.2462,0.5088,0.5641

@@ -18,6 +18,43 @@ RDD2022.
 | **P2** | ¿El alumno KD conserva mejor calibración (ECE) tras cuantizar? | ECE del alumno base vs. alumno KD en INT8 |
 | **P3** | ¿Un alumno KD con PTQ alcanza a un alumno base con QAT? | mAP@0.5(KD + PTQ INT8) vs. mAP@0.5(base + QAT INT8), no inferioridad con δ = 0.010 |
 
+### Hipótesis (preespecificadas, D7 de [CLAUDE.md](CLAUDE.md))
+
+Fijadas antes de tener resultados; α, δ, B y las hipótesis no se cambian después de ver los datos.
+
+Definiciones (todas con la mAP@0.5 de 4 clases, en test y dentro del mismo motor, TensorRT):
+- **dmAP50** = mAP@0.5(FP32) − mAP@0.5(cuantizado): pérdida por cuantización de un alumno.
+- **ECE**: detecciones con confianza ≥ 0.25, emparejadas con las cajas reales por IoU ≥ 0.5 (greedy por confianza),
+  correctas si coincide la clase; 15 intervalos de igual ancho.
+- **Convención de signo:** D > 0 favorece al alumno KD en H1 y H2.
+
+Familia confirmatoria (5 contrastes, α global = 0.05, corrección de Holm):
+
+| Pregunta | Hipótesis | Estadístico D | H0 | H1 | Tipo |
+|---|---|---|---|---|---|
+| P1 | **H1a** | dmAP50_base − dmAP50_KD, PTQ INT8 | D = 0 | D ≠ 0 | bilateral, IC 95 % |
+| P1 | **H1b** | dmAP50_base − dmAP50_KD, QAT INT8 | D = 0 | D ≠ 0 | bilateral, IC 95 % |
+| P2 | **H2a** | ECE_base − ECE_KD, PTQ INT8 | D = 0 | D ≠ 0 | bilateral, IC 95 % |
+| P2 | **H2b** | ECE_base − ECE_KD, QAT INT8 | D = 0 | D ≠ 0 | bilateral, IC 95 % |
+| P3 | **H3** | mAP50(KD + PTQ INT8) − mAP50(base + QAT INT8) | D ≤ −δ | D > −δ | no inferioridad, unilateral, δ = 0.010, IC 90 % |
+
+Cómo se contrastan:
+- **Bootstrap pareado:** B = 1 000 remuestreos con reemplazo de las imágenes de test (semilla 42), con los mismos
+  índices para todos los modelos. Cada diferencia se calcula por semilla (base_s vs. KD_s, s = 0, 1, 2) y se promedia
+  sobre las 3 semillas.
+- **Valor p (bootstrap centrado, Efron y Tibshirani, 1993):**
+  - bilateral: p = (1 + #{ |D\*_b − D_obs| ≥ |D_obs| }) / (B + 1)
+  - H3: p = (1 + #{ D\*_b − D_obs ≥ D_obs + δ }) / (B + 1)
+- **Holm** sobre los 5 valores p (se reportan p crudo y p ajustado). H3 concluye no inferioridad si el límite inferior
+  del IC 90 % supera −δ.
+- **Consistencia entre semillas:** signo de D en cada semilla (p. ej., "2/3 semillas positivas"), descriptivo.
+- **Exploratorios** (IC 95 %, sin valor p): AP@0.5 de D40, dmAP con mAP@0.5:0.95, mAP sin D10, pérdida del maestro
+  frente a los alumnos, FP16 frente a FP32, precisión y recall en INT8.
+- **Japón (D9):** misma familia y misma corrección de Holm, por separado; la coincidencia entre datasets se reporta
+  de forma descriptiva.
+
+Resultados de India: [Fase 7](#fase-7--estadística-india) y Tabla VII en [Fase 9](#fase-9--tablas-y-figura-del-paper).
+
 **Idea general del experimento**
 
 ```
@@ -54,9 +91,24 @@ entrenamiento.
 | 6 | Evaluación en test (mAP, ECE) | ✅ PTQ (la QAT se evalúa con el mismo código) |
 | 7 | Estadística (bootstrap, Holm) | ✅ India |
 | 8 | Eficiencia (latencia, FPS, tamaño) | ✅ India |
-| 9 | Tablas y figuras del paper | pendiente |
+| 9 | Tablas y figuras del paper | ✅ India (columnas de Japón en J9) |
 | J1 | Réplica en Japón: datos y auditoría | ✅ |
-| J2–J9 | Réplica en Japón: maestro, alumnos, cuantización, evaluación, estadística | ⏳ J2–J3 hechos; J4 siguiente (ver checklist) |
+| J2–J9 | Réplica en Japón: maestro, alumnos, cuantización, evaluación, estadística | ⏳ J2–J4b hechos (λ = 1.0); siguiente J4c, alumnos KD (ver checklist) |
+
+### Primer avance (2026-10-31)
+
+Hito presentado como **primer avance** del proyecto (etiqueta git `primer-avance`; guion de la exposición en
+[presentacion.md](presentacion.md)):
+
+- **India completa (Fases 0–9):** datos, maestro, alumnos base y KD (3 semillas), PTQ (TensorRT y OpenVINO), QAT
+  (ModelOpt), evaluación en test, estadística D7, eficiencia con el reloj de la GPU fijado y tablas y figura del
+  paper. Resultado: ninguna de las 5 hipótesis rechaza H0 tras Holm; la KD no protege contra la pérdida por
+  cuantización y base + QAT supera a KD + PTQ.
+- **Japón hasta J4b:** datos (J1), maestro YOLO11m (J2), alumnos base (J3), prueba de humo de la KD (J4a) y piloto
+  de λ (J4b, λ = 1.0). El test de Japón aún no se ha mirado.
+- **Cómputo:** 77 h de GPU (`results/tables/compute_budget.csv`).
+- **Pendiente tras el avance:** J4c–J9 de Japón, sensibilidad a la calibración (exploratorio) y correcciones del
+  paper para alinearlo con este repositorio.
 
 ### Resultados hasta ahora (validación)
 
@@ -449,9 +501,93 @@ Latencia de inferencia (mediana, media ± d.e. de 3 semillas):
   (ModelOpt y QAT) es ~15 % más lento que la PTQ implícita de TensorRT.
 - Variación entre repeticiones: mediana 0.07 % (máx. 2 %) en GPU; mediana 4 % (máx. 12 %) en CPU.
 
-### Fase 9 — Pendiente
+### Fase 9 — Tablas y figura del paper
 
-Tablas III–V y figuras del paper.
+`python -m src.report.paper_tables` (configuración en `configs/report.yaml`) genera, solo a partir de resultados
+ya calculados, las tablas de resultados de `paper/main.tex` en `results/tables/paper/`. Cada tabla se guarda en
+CSV, en Markdown y como filas LaTeX (`.tex`) listas para pegar entre `\midrule` y `\bottomrule`:
+
+| Archivo | Tabla del paper | Fuente |
+|---|---|---|
+| `tabla_III_particion` | III. Partición de los subconjuntos | `dataset_stats.csv` (India y Japón) |
+| `tabla_V_fp32` | V. Desempeño en FP32 | `metrics.csv`, TensorRT FP32 |
+| `tabla_VI_cuantizacion` | VI. Pérdida por cuantización y calibración (GPU) | `delta_map.csv` y `metrics.csv` |
+| `tabla_VII_contrastes` | VII. Contrastes confirmatorios | `hypothesis_tests.csv` (p con Holm) |
+| `tabla_VIII_eficiencia` | VIII. Eficiencia de los alumnos | `efficiency.csv` (India, 6 alumnos) |
+
+Las columnas de Japón quedan en "—" hasta que existan sus resultados; en J9 basta con volver a ejecutar el script.
+La figura `results/figures/map_vs_cuantizacion.{png,pdf}` muestra la mAP@0.5 y la mAP@0.5:0.95 de ambos alumnos
+por método de cuantización (media ± d.e. y cada semilla); la de Japón irá en `results/japan/figures/`.
+
+La Tabla VIII usa la latencia **media** (FPS = 1000 / media, D8). En CPU la distribución tiene cola: la media
+(INT8 8.98 ms, FP32 15.55 ms → 1.7×) supera a la mediana (≈ 8.0 y 15.3 ms → 1.9×).
+
+#### Tablas de resultados (India, test)
+
+Copia de `results/tables/paper/*.md` (2026-10-31). Japón se agrega en J9.
+
+**Tabla III. Partición de los subconjuntos** (columnas de clase: instancias; Fondo: imágenes sin daños)
+
+| Partición | Imágenes | D00 | D10 | D20 | D40 | Fondo |
+|---|---|---|---|---|---|---|
+| IN: entren. | 5 396 | 1 097 | 50 | 1 417 | 2 241 | 3 138 |
+| IN: valid. | 1 144 | 231 | 9 | 304 | 482 | 673 |
+| IN: prueba | 1 166 | 227 | 9 | 300 | 464 | 672 |
+| IN: total | 7 706 | 1 555 | 68 | 2 021 | 3 187 | 4 483 |
+| JP: entren. | 7 346 | 2 833 | 2 794 | 4 354 | 1 560 | 1 824 |
+| JP: valid. | 1 595 | 611 | 594 | 919 | 322 | 391 |
+| JP: prueba | 1 565 | 605 | 591 | 925 | 361 | 391 |
+| JP: total | 10 506 | 4 049 | 3 979 | 6 198 | 2 243 | 2 606 |
+
+**Tabla V. Desempeño en FP32** (TensorRT FP32, batch 1; media ± d.e. de 3 semillas; el maestro tiene una corrida)
+
+| Modelo | mAP@0.5 | mAP@0.5:0.95 | AP D40 | Prec. | ECE |
+|---|---|---|---|---|---|
+| Maestro | 0.329 | 0.141 | 0.413 | 0.382 | 0.097 |
+| Base | 0.310 ± 0.020 | 0.129 ± 0.007 | 0.378 ± 0.020 | 0.375 ± 0.046 | 0.088 ± 0.043 |
+| Destilado | 0.316 ± 0.005 | 0.129 ± 0.002 | 0.401 ± 0.012 | 0.373 ± 0.022 | 0.098 ± 0.044 |
+
+**Tabla VI. Pérdida por cuantización y calibración (GPU)** (ΔmAP@0.5 respecto al TensorRT FP32 del mismo modelo;
+ECE del modelo cuantizado; PTQ-MO: PTQ con ModelOpt, control sin ajuste fino de la QAT)
+
+| Modelo | Método | ΔmAP@0.5 | ECE |
+|---|---|---|---|
+| Maestro | PTQ FP16 | 0.001 | 0.097 |
+| Maestro | PTQ INT8 | 0.178 | — (ninguna detección con confianza ≥ 0.25) |
+| Base | PTQ FP16 | 0.003 ± 0.003 | 0.086 ± 0.042 |
+| Base | PTQ INT8 | 0.035 ± 0.009 | 0.096 ± 0.056 |
+| Base | PTQ-MO INT8 | 0.006 ± 0.009 | 0.110 ± 0.047 |
+| Base | QAT INT8 | 0.006 ± 0.003 | 0.077 ± 0.020 |
+| Destilado | PTQ FP16 | 0.000 ± 0.001 | 0.098 ± 0.042 |
+| Destilado | PTQ INT8 | 0.031 ± 0.007 | 0.113 ± 0.065 |
+| Destilado | PTQ-MO INT8 | 0.013 ± 0.003 | 0.112 ± 0.062 |
+| Destilado | QAT INT8 | 0.011 ± 0.009 | 0.085 ± 0.032 |
+
+**Tabla VII. Contrastes confirmatorios** (D > 0 favorece al destilado; p ajustado con Holm; IC 95 % para H1a–H2b e
+IC 90 % para H3, no inferioridad con δ = 0.010)
+
+| Hip. | Diferencia D | D [IC] | p (Holm) | Decisión |
+|---|---|---|---|---|
+| H1a | ΔmAP base − KD (PTQ) | +0.004 [−0.007, +0.015] | 1.000 | no rechaza H0 |
+| H1b | ΔmAP base − KD (QAT) | −0.005 [−0.020, +0.015] | 1.000 | no rechaza H0 |
+| H2a | ECE base − KD (PTQ) | −0.016 [−0.031, +0.013] | 1.000 | no rechaza H0 |
+| H2b | ECE base − KD (QAT) | −0.008 [−0.027, +0.014] | 1.000 | no rechaza H0 |
+| H3 | mAP KD+PTQ − base+QAT | −0.019 [−0.033, −0.009] | 1.000 | no rechaza H0 (no se demuestra no inferioridad) |
+
+**Tabla VIII. Eficiencia de los alumnos** (batch 1, 640 × 640; latencia de inferencia, media ± d.e. entre los 6
+alumnos, cada uno con 3 repeticiones de 500 medidas; FPS = 1000 / latencia media; reloj SM fijado en 2505 MHz)
+
+| Plataforma | Precisión | Tamaño (MB) | Latencia (ms) | FPS |
+|---|---|---|---|---|
+| RTX 4060 | FP32 | 12.9 | 1.70 ± 0.01 | 589 |
+| RTX 4060 | FP16 | 7.5 | 0.87 ± 0.01 | 1146 |
+| RTX 4060 | PTQ INT8 | 4.5 | 0.71 ± 0.01 | 1408 |
+| RTX 4060 | PTQ-MO INT8 | 4.5 | 0.83 ± 0.02 | 1202 |
+| RTX 4060 | QAT INT8 | 4.5 | 0.82 ± 0.01 | 1214 |
+| i7-12700KF | FP32 | 10.2 | 15.55 ± 0.15 | 64 |
+| i7-12700KF | PTQ INT8 | 3.2 | 8.98 ± 0.15 | 111 |
+
+![mAP vs. método de cuantización (India)](results/figures/map_vs_cuantizacion.png)
 
 El plan estadístico (hipótesis, α, δ y número de remuestreos) está fijado de antemano en
 [CLAUDE.md](CLAUDE.md), sección D7, y no se cambia después de ver resultados.
@@ -489,14 +625,14 @@ de `configs/japan/` (mismos nombres de archivo que en India). Checklist:
 |---|---|---|---|
 | J2 — Maestro YOLO11m | `bash scripts/train_teacher.sh --dataset japan` | 8–14 h (real: 5.6 h) | ✅ val mAP@0.5 0.571 |
 | J3 — Alumnos base s0–s2 | `for s in 0 1 2; do bash scripts/train_student.sh --kd off --seed $s --dataset japan; done` | ~11 h (real: 11.3 h) | ✅ val mAP@0.5 0.553 ± 0.001 |
-| J4a — Humo y verificación KD | `bash scripts/train_student.sh --kd on --seed 0 --humo --dataset japan` + `check_kd` | minutos | pendiente |
-| J4b — Piloto de λ | `bash scripts/pilot_lambda.sh japan` (luego se fija λ en `configs/japan/kd.yaml`) | ~4 h | pendiente |
+| J4a — Humo y verificación KD | `bash scripts/train_student.sh --kd on --seed 0 --humo --dataset japan` + `check_kd` | minutos | ✅ 2026-10-31 (TODO OK) |
+| J4b — Piloto de λ | `bash scripts/pilot_lambda.sh japan` (luego se fija λ en `configs/japan/kd.yaml`) | 4.4 h | ✅ 2026-10-31: λ = 1.0 |
 | J4c — Alumnos KD s0–s2 | `for s in 0 1 2; do bash scripts/train_student.sh --kd on --seed $s --dataset japan; done` | ~26 h | pendiente |
 | J5 — PTQ | `bash scripts/export_all.sh --dataset japan` | ~2 h | pendiente |
 | J5b — QAT | `bash scripts/qat.sh --dataset japan` | 7–9 h | pendiente |
 | J6 — Evaluación en test | `bash scripts/evaluate.sh --dataset japan` | < 1 h | pendiente |
 | J7 — Estadística | familia D7 y Holm propios de Japón | — | pendiente |
-| J8 — Eficiencia | `powershell -ExecutionPolicy Bypass -File scripts\benchmark.ps1 --dataset japan` (administrador) | ~15 min | pendiente |
+| J8 — Eficiencia (verificación) | `powershell -ExecutionPolicy Bypass -File scripts\benchmark.ps1 --dataset japan` (administrador) | ~15 min | pendiente (al final; el paper reporta la eficiencia de India y la J8 solo verifica que Japón no difiere) |
 | J9 — Tablas y figuras | comparación India vs. Japón | — | pendiente |
 
 Decisiones confirmadas antes de ver resultados de Japón (D9): solo maestro YOLO11m, piloto de λ propio y

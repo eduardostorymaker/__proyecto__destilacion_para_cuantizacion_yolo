@@ -1,0 +1,37 @@
+# Fase 9 / J9: tablas y figura del paper (paper/main.tex) a partir de los resultados ya calculados.
+# Una sola configuración para ambos subconjuntos: las tablas tienen columnas IN y JP; si Japón aún no tiene un
+# resultado, su celda queda en "—". Volver a ejecutar tras cada fase de Japón.
+# Las rutas de entrada salen de los yaml de cada dataset (configs/ y configs/japan/), no se repiten aquí.
+
+datasets:
+  india: IN
+  japan: JP
+
+motor_gpu: tensorrt            # D6: ΔmAP y ECE dentro del mismo motor
+motor_cpu: openvino
+
+# Orden y nombre de los métodos de cuantización (precisión en metrics.csv → etiqueta del paper)
+metodos:
+  fp16: PTQ FP16
+  int8: PTQ INT8
+  mopt_int8: PTQ-MO INT8
+  qat_int8: QAT INT8
+
+grupos:                        # grupo en metrics.csv → etiqueta del paper
+  maestro: Maestro
+  base: Base
+  kd: Destilado
+
+# Eficiencia (Tabla VIII): se reporta una vez (India), con los 6 alumnos juntos (misma arquitectura)
+eficiencia_dataset: india
+plataformas:
+  tensorrt: RTX 4060
+  openvino: i7-12700KF
+
+decimales: {map: 3, ece: 3, p: 3, ms: 2, mb: 1}
+
+salidas:
+  tablas: results/tables/paper          # tabla_*.csv, tabla_*.md y tabla_*.tex (filas del tabular)
+  figuras:                               # mAP vs. método de cuantización, una por dataset
+    india: results/figures/map_vs_cuantizacion
+    japan: results/japan/figures/map_vs_cuantizacion
