@@ -1,12 +1,12 @@
-# Fase 7: estadística preespecificada (D7 del CLAUDE.md). NO cambiar alfa, delta, B ni las hipótesis.
+# Fase 7: estadística (D7 del CLAUDE.md). alfa, delta y B no cambian; nomenclatura de hipótesis del 2026-11-02.
 
 eval_config: configs/eval.yaml       # de aquí salen el ground truth de test, metrics.csv y los parámetros de ECE
 B: 1000                               # remuestreos con reemplazo de las imágenes de test
 semilla: 42
 alfa: 0.05                            # global, con corrección de Holm sobre la familia confirmatoria
-delta: 0.010                          # margen de no inferioridad de H3 (1 punto de mAP@0.5)
-ic: 0.95                              # IC por percentiles para H1a–H2b y exploratorios
-ic_h3: 0.90                           # IC bilateral de H3 (≡ contraste unilateral al 5 %)
+delta: 0.010                          # margen de no inferioridad de H5 (1 punto de mAP@0.5)
+ic: 0.95                              # IC por percentiles (bilaterales y exploratorias)
+ic_no_inferioridad: 0.90              # IC bilateral de H5 (≡ contraste unilateral al 5 %)
 semillas: [0, 1, 2]
 tolerancia_reproduccion: 0.001        # |mAP propia − mAP de Ultralytics| sin remuestreo (D7)
 
@@ -15,6 +15,23 @@ motor: tensorrt
 fp32: fp32
 ptq_int8: int8
 qat_int8: qat_int8
+
+# Hipótesis (D7, nomenclatura del 2026-11-02): una familia por pregunta, en el orden de los objetivos.
+# D > 0 favorece SIEMPRE al alumno KD. dmAP50 = mAP50(FP32) − mAP50(cuantizado) y ΔECE = ECE(INT8) − ECE(FP32),
+# ambos dentro de TensorRT (D6). Solo las confirmatorias tienen valor p y entran en Holm; las exploratorias se
+# reportan con IC 95 % y signos por semilla (opción B: agregadas después de ver test en India, antes en Japón).
+#   tipo: confirmatoria | exploratoria ; contraste: bilateral | no_inferioridad
+hipotesis:
+  H1:  {pregunta: P1, objetivo: OE1, tipo: exploratoria,  contraste: bilateral,       estadistico: "mAP50 KD − mAP50 base, FP32"}
+  H2a: {pregunta: P2, objetivo: OE2, tipo: exploratoria,  contraste: bilateral,       estadistico: "mAP50 KD − mAP50 base, PTQ INT8"}
+  H2b: {pregunta: P2, objetivo: OE2, tipo: exploratoria,  contraste: bilateral,       estadistico: "mAP50 KD − mAP50 base, QAT INT8"}
+  H3a: {pregunta: P3, objetivo: OE2, tipo: confirmatoria, contraste: bilateral,       estadistico: "dmAP50 base − dmAP50 KD, PTQ INT8", antes: H1a}
+  H3b: {pregunta: P3, objetivo: OE2, tipo: confirmatoria, contraste: bilateral,       estadistico: "dmAP50 base − dmAP50 KD, QAT INT8", antes: H1b}
+  H4a: {pregunta: P4, objetivo: OE3, tipo: confirmatoria, contraste: bilateral,       estadistico: "ECE base − ECE KD, PTQ INT8", antes: H2a}
+  H4b: {pregunta: P4, objetivo: OE3, tipo: confirmatoria, contraste: bilateral,       estadistico: "ECE base − ECE KD, QAT INT8", antes: H2b}
+  H4c: {pregunta: P4, objetivo: OE3, tipo: exploratoria,  contraste: bilateral,       estadistico: "ΔECE base − ΔECE KD, PTQ INT8"}
+  H4d: {pregunta: P4, objetivo: OE3, tipo: exploratoria,  contraste: bilateral,       estadistico: "ΔECE base − ΔECE KD, QAT INT8"}
+  H5:  {pregunta: P5, objetivo: OE4, tipo: confirmatoria, contraste: no_inferioridad, estadistico: "mAP50 (KD + PTQ INT8) − mAP50 (base + QAT INT8)", antes: H3}
 
 salidas:
   hipotesis: results/tables/hypothesis_tests.csv

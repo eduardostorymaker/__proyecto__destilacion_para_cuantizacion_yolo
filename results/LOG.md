@@ -698,8 +698,8 @@ Resultados en test, TensorRT (Δ = FP32 − cuantizado; media ± d.e. de 3 semil
 - Por semilla, D = Δ_base − Δ_KD (QAT, mAP@0.5): −0.0014, −0.0115, −0.0014 (0/3 a favor de KD).
 - H3 (vista previa): mAP@0.5(KD + PTQ INT8) − mAP@0.5(base + QAT INT8) por semilla: −0.0332, −0.0217, −0.0019
   (media −0.019, por debajo de −δ = −0.010).
-- **Hallazgo:** casi toda la ganancia viene del esquema de cuantización de ModelOpt (Q/DQ explícito, pesos por canal),
-  no del ajuste fino: el control "ModelOpt PTQ" ya pierde solo 0.006–0.013, frente a 0.031–0.035 de la PTQ implícita
+- **Hallazgo:** casi toda la ganancia viene del esquema de cuantización de ModelOpt (Q/DQ explícito; ver la
+  corrección del 2026-11-01 sobre el mecanismo), no del ajuste fino: el control "ModelOpt PTQ" ya pierde solo 0.006–0.013, frente a 0.031–0.035 de la PTQ implícita
   de TensorRT vía Ultralytics; la QAT apenas cambia eso. La QAT sí reduce el ECE respecto de FP32 (−0.011 a −0.013).
 - Presupuesto de cómputo actualizado (`results/tables/compute_budget.csv`).
 - **Resultado: Fase 5b completada.**
@@ -904,3 +904,111 @@ Latencia de inferencia (mediana; media ± d.e. de 3 semillas) y FPS = 1000 / lat
 - Las diferencias son pequeñas (0.4–0.8 puntos de mAP@0.5:0.95, con una sola semilla y 50 épocas, curvas aún
   subiendo); se aplica la regla tal cual, sin reinterpretarla.
 - Siguiente: J4c, alumnos KD s0–s2 de Japón (~27 h; ~8.9 h por semilla según el piloto).
+
+## 2026-10-31 — Figuras de apoyo para la presentación
+
+- `python -m src.report.figuras_presentacion` (configuración en `configs/report.yaml`, sección `presentacion`) →
+  `results/figures/presentacion/`: diagrama de flujo, diagrama de fiabilidad (India, base vs. KD en TRT FP32, PTQ
+  INT8 y QAT INT8, mismas predicciones y parámetros del ECE), mAP@0.5 frente a latencia (GPU y CPU), distribución de
+  clases (India y Japón) y activaciones del maestro frente al alumno base_s0.
+- Para la última se recalcularon los rangos de activación (100 imágenes de calibración; el diagnóstico del
+  2026-10-18 solo los imprimió) y se guardaron en `results/tables/activaciones_maestro_alumno.csv`. Reproduce el
+  diagnóstico: cociente máx/p99.99 de hasta 37 en la cabeza del maestro (model.23.cv3.2.1.1: máx 474 frente a 12.8)
+  y de 2.4 como máximo en el alumno.
+- Observación del diagrama de fiabilidad: en FP32 los alumnos son subconfiados (acierto > confianza en casi todos
+  los intervalos); la QAT los acerca a la diagonal, lo que explica su menor ECE.
+
+## 2026-11-01 — Corrección: mecanismo del hallazgo PTQ-MO
+
+- La explicación "la ganancia de ModelOpt viene de los pesos por canal" no está respaldada por los datos.
+  `engine_layers.csv` (6 alumnos): la PTQ implícita y PTQ-MO/QAT cuantizan casi las mismas convoluciones (79 frente a
+  81 de 88 con pesos INT8), pero el esquema Q/DQ de ModelOpt deja más cómputo en FP16: ~41 % de las capas de cómputo
+  en INT8 (40.0–41.5 %) frente a ~65 % (64.8–68.0 %) con la PTQ implícita; FP16 ~38 % frente a ~18 %. Los
+  porcentajes no son estrictamente comparables (148 frente a 122 capas de cómputo, por distinta fusión).
+- Redacción corregida en README, `presentacion_desarrollo.md`, fuente de la presentación y paper (Discusión P3 y
+  Conclusiones, a pedido del usuario): "Q/DQ explícito de ModelOpt", sin atribuir la causa a los pesos por canal; el
+  mecanismo queda como observación descriptiva, no aislada. Sin cambios en resultados ni en la estadística.
+
+## 2026-11-02 — Figura del pipeline para el paper
+
+- `python -m src.report.figura_pipeline` (configuración en `configs/report.yaml`, sección `pipeline`) →
+  `results/figures/pipeline.{pdf,png}`: diagrama de los seis bloques (datos, entrenamiento, cuantización,
+  evaluación, estadística y eficiencia) a lo ancho de la página (figure* de IEEE, 7.16 × 3.5 in). Solo conteos de
+  diseño (45 modelos, 52 evaluaciones, B = 1 000, etc.) y tamaños de los conjuntos de IN y JP; ningún resultado.
+
+## 2026-11-02 — Replanteamiento de preguntas e hipótesis (P1–P5 ↔ H1–H5)
+
+- Problema detectado: las preguntas originales (P1 pérdida, P2 calibración, P3 KD + PTQ frente a base + QAT) no
+  respondían la pregunta principal, "¿la KD mejora el modelo cuantizado?": solo medían la robustez (pérdida), no el
+  nivel tras cuantizar; además P2 decía "conserva" y H2 medía el ECE absoluto en INT8.
+- Decisión del usuario (opción B): objetivo general y OE reescritos; una pregunta por objetivo (P1 FP32, P2 nivel
+  cuantizado, P3 pérdida, P4 calibración, P5 KD + PTQ frente a base + QAT) y hipótesis Pk ↔ Hk. La familia
+  confirmatoria es la misma (5 contrastes, mismos estadísticos, α, δ y B), solo renombrada: H1a → H3a, H1b → H3b,
+  H2a → H4a, H2b → H4b, H3 → H5. Nuevas exploratorias (IC 95 %, sin p): H1 (KD − base en FP32), H2a/H2b (KD − base
+  cuantizados con PTQ/QAT) y H4c/H4d (diferencia en el aumento del ECE al cuantizar). Agregadas después de ver test
+  en India y antes en Japón: registrado en `protocol_deviations.csv`.
+- Cambios: CLAUDE.md (objetivos, tabla OE–P–H y D7), `configs/stats.yaml` y `configs/japan/stats.yaml` (sección
+  `hipotesis` con pregunta, objetivo, tipo y contraste; `ic_h3` → `ic_no_inferioridad`), `src/eval/bootstrap.py`
+  (contrastes nuevos; Holm solo sobre las confirmatorias; `hypothesis_tests.csv` con columnas pregunta, objetivo,
+  tipo, contraste y antes), `src/report/paper_tables.py` (Tabla VII por pregunta), figuras del pipeline y de flujo,
+  README, paper (objetivos, preguntas, análisis estadístico, Tabla VII, resultados, discusión, conclusiones y
+  resumen; compila sin errores) y `presentacion_parcial.pptx`.
+- `python -m src.eval.bootstrap` (log `runs/logs/bootstrap_india_20261102.log`, 749 s): reproducción de Ultralytics
+  OK (máx. |Δ| = 0.000005); 0 réplicas con clases ausentes. Las 5 confirmatorias dan exactamente los mismos p crudos
+  que el 2026-10-20 (0.471, 0.563, 0.249, 0.425, 0.847; Holm 1.0 en todas); E01–E18 y descriptive.csv idénticos.
+  Se borraron las distribuciones con nombres viejos (H1a…H3.npy) y se generaron H1…H5.npy.
+
+| P | H | Tipo | D | IC | Semillas |
+|---|---|---|---|---|---|
+| P1 | H1 | expl. | +0.006 | IC95 [−0.014, +0.016] | 2/3 |
+| P2 | H2a | expl. | +0.010 | IC95 [−0.007, +0.019] | 3/3 |
+| P2 | H2b | expl. | +0.001 | IC95 [−0.015, +0.013] | 1/3 |
+| P3 | H3a | conf. | +0.004 | IC95 [−0.007, +0.015] | 2/3 |
+| P3 | H3b | conf. | −0.005 | IC95 [−0.020, +0.015] | 0/3 |
+| P4 | H4a | conf. | −0.016 | IC95 [−0.031, +0.013] | 1/3 |
+| P4 | H4b | conf. | −0.008 | IC95 [−0.027, +0.014] | 1/3 |
+| P4 | H4c | expl. | −0.007 | IC95 [−0.031, +0.021] | 1/3 |
+| P4 | H4d | expl. | +0.001 | IC95 [−0.027, +0.018] | 2/3 |
+| P5 | H5 | conf. | −0.019 | IC90 [−0.033, −0.009] | 1/3 > −δ |
+
+- Lectura: con PTQ el alumno KD queda por encima del base en las 3 semillas (H2a), pero el IC incluye el 0 y la
+  ventaja viene sobre todo de la que ya tenía en FP32 (H2 = H1 + H3: +0.010 ≈ +0.006 + 0.004); con QAT desaparece.
+  El aumento del ECE al cuantizar es similar en ambos alumnos (H4c, H4d).
+- Japón: J7 usará la misma tabla de hipótesis (todas preespecificadas antes de ver su test).
+
+## 2026-11-02 — Ejemplos de detección para la presentación (India)
+- `python -m src.report.figura_detecciones` (WSL; configuración en `configs/report.yaml`, sección `detecciones`). No
+  vuelve a correr modelos: dibuja las predicciones de prueba de la Fase 6 (`runs/eval/*/predictions.json`) con
+  conf ≥ 0.25; acierto = IoU ≥ 0.5 y misma clase, emparejamiento greedy por confianza (reglas del ECE).
+- Semilla por grupo = mAP@0.5 mediana en TRT FP32: base s1 (0.316), KD s2 (0.314); maestro s0.
+- Imágenes por nivel de exactitud (decisión del usuario; la primera selección, por más baches / más clases / más
+  pérdida con PTQ, se descartó porque ningún modelo detectaba bien): F1 por imagen = 2·aciertos / (detecciones +
+  cajas reales), promediado sobre los 4 modelos mostrados, entre las 122 imágenes de prueba con ≥ 3 cajas reales
+  (F1 de 0 a 0.90, mediana 0.36; 11 con F1 = 0). Alta = máximo: India_001783 (0.90); media = la más cercana a la
+  mediana: India_001156 (0.35); baja = la más cercana al percentil 10: India_003936 (0.08).
+- Comparaciones (decisión del usuario): base frente a KD con PTQ INT8 y con QAT INT8, más la verdad de terreno. Una
+  figura por comparación e imagen (GT | base | KD): 6 figuras
+  `results/figures/presentacion/detecciones_{kd_ptq,kd_qat}_{imagen}.png`, en el anexo de `presentacion_parcial.pptx`.
+  Conteos en `results/tables/detecciones_seleccion.csv`. Aciertos / FP en las 3 imágenes (14 cajas reales):
+  base PTQ INT8 3/0, KD PTQ INT8 7/4; base QAT 6/7, KD QAT 4/6. Son ilustrativas, no evidencia estadística.
+- El título de cada panel incluye las métricas del modelo en toda la prueba (metrics.csv): mAP@0.5, ΔmAP frente a su
+  FP32 (mismo motor), ECE y AP@0.5 de D40. Son de la semilla mostrada, no la media de 3 (p. ej., ECE con PTQ INT8:
+  base s1 0.045, KD s2 0.188, frente a medias de 0.096 y 0.113).
+
+## 2026-11-02 — Paper: secciones IV–VII reescritas y figura de activaciones
+- A pedido del usuario se reescribieron Materiales y métodos, Resultados, Discusión y Conclusiones de `paper/main.tex`
+  siguiendo el pipeline de la presentación (respaldo: `paper/main_antes_reescritura_20261102.tex`). Nuevos: Fig. 1
+  (pipeline), Tabla II (entorno + configuración, fusión de las antiguas II y IV), Tabla IV (preguntas e hipótesis) y
+  Fig. 3 (activaciones del maestro frente al alumno). Las tablas III y V–VIII se mantienen tal como las genera
+  `src.report.paper_tables`.
+- `python -m src.report.paper_tables` genera además `results/figures/activaciones_maestro_alumno.{png,pdf}` (una
+  columna) desde `results/tables/activaciones_maestro_alumno.csv`; las tablas del paper no cambiaron.
+- Corrección: las capas de cómputo de los alumnos en INT8 con la PTQ implícita son el 65–68 % (antes decía 63–68 %,
+  que mezclaba el porcentaje de todas las capas).
+- (mismo día) La tabla de preguntas e hipótesis se movió de la sección IV-F a un Apéndice C ampliado (OE → P → H,
+  diferencia D, contraste y tipo), por espacio y a pedido del usuario; IV-F nombra ahora las cinco confirmatorias en
+  el texto. Introducción: se aclaró que OE2 da lugar a P2 y P3 y que OE5 es descriptivo, y se mencionan los apéndices.
+- (mismo día) Apéndice D del paper, "Ejemplos de detección": una figura de página completa
+  (`results/figures/detecciones_paper.{png,pdf}`, generada por `src.report.figura_detecciones`, sección
+  `detecciones.paper` de `configs/report.yaml`) con 3 imágenes de prueba (exactitud alta, media y baja) × verdad de
+  terreno, base y destilado con PTQ y con QAT INT8 (15 paneles). Se cita desde Resultados V-B.

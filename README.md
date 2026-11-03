@@ -10,48 +10,54 @@ RDD2022.
 
 ---
 
-## 1. Preguntas de investigación
+## 1. Objetivos, preguntas e hipótesis
 
-| | Pregunta | Cómo se mide |
-|---|---|---|
-| **P1** | ¿La KD reduce la pérdida de mAP por cuantización INT8 en un YOLO11n? | ΔmAP@0.5 = mAP(FP32) − mAP(INT8), alumno base vs. alumno KD |
-| **P2** | ¿El alumno KD conserva mejor calibración (ECE) tras cuantizar? | ECE del alumno base vs. alumno KD en INT8 |
-| **P3** | ¿Un alumno KD con PTQ alcanza a un alumno base con QAT? | mAP@0.5(KD + PTQ INT8) vs. mAP@0.5(base + QAT INT8), no inferioridad con δ = 0.010 |
+**Objetivo general:** evaluar si la destilación de conocimiento (KD) mejora el desempeño y la calibración de un
+YOLO11n cuantizado a INT8 con PTQ y QAT, y si reduce su pérdida respecto de la versión FP32, en la detección de
+daños viales. Una pregunta por objetivo específico y una familia de hipótesis por pregunta (Pk ↔ Hk; replanteado el
+2026-11-02, ver [CLAUDE.md](CLAUDE.md) y `results/tables/protocol_deviations.csv`).
 
-### Hipótesis (preespecificadas, D7 de [CLAUDE.md](CLAUDE.md))
-
-Fijadas antes de tener resultados; α, δ, B y las hipótesis no se cambian después de ver los datos.
-
-Definiciones (todas con la mAP@0.5 de 4 clases, en test y dentro del mismo motor, TensorRT):
+Definiciones (mAP@0.5 de 4 clases, en test y dentro del mismo motor, TensorRT):
 - **dmAP50** = mAP@0.5(FP32) − mAP@0.5(cuantizado): pérdida por cuantización de un alumno.
 - **ECE**: detecciones con confianza ≥ 0.25, emparejadas con las cajas reales por IoU ≥ 0.5 (greedy por confianza),
-  correctas si coincide la clase; 15 intervalos de igual ancho.
-- **Convención de signo:** D > 0 favorece al alumno KD en H1 y H2.
+  correctas si coincide la clase; 15 intervalos de igual ancho. **ΔECE** = ECE(INT8) − ECE(FP32).
+- **Convención de signo:** D > 0 favorece SIEMPRE al alumno KD.
 
-Familia confirmatoria (5 contrastes, α global = 0.05, corrección de Holm):
+| OE | Objetivo específico | P | Pregunta | H | Estadístico D | Contraste | Tipo |
+|---|---|---|---|---|---|---|---|
+| OE1 | Entrenar YOLO11n con y sin KD (maestro YOLO11m) y comparar en FP32 | **P1** | ¿La KD mejora al alumno en FP32? | **H1** | mAP50 KD − mAP50 base, FP32 | bilateral | exploratoria |
+| OE2 | Cuantizar ambos alumnos a INT8 (PTQ y QAT) y comparar su mAP cuantizada y su pérdida, global y en baches | **P2** | ¿El alumno KD cuantizado supera al base cuantizado con el mismo método? | **H2a** | mAP50 KD − mAP50 base, PTQ INT8 | bilateral | exploratoria |
+| | | | | **H2b** | mAP50 KD − mAP50 base, QAT INT8 | bilateral | exploratoria |
+| OE2 | (mismo) | **P3** | ¿La KD reduce la pérdida de mAP por cuantización? | **H3a** | dmAP50 base − dmAP50 KD, PTQ INT8 | bilateral | **confirmatoria** |
+| | | | | **H3b** | dmAP50 base − dmAP50 KD, QAT INT8 | bilateral | **confirmatoria** |
+| OE3 | Evaluar si el alumno KD tiene mejor ECE tras cuantizar y si se deteriora menos | **P4** | ¿El alumno KD cuantizado está mejor calibrado y su calibración se deteriora menos? | **H4a** | ECE base − ECE KD, PTQ INT8 | bilateral | **confirmatoria** |
+| | | | | **H4b** | ECE base − ECE KD, QAT INT8 | bilateral | **confirmatoria** |
+| | | | | **H4c** | ΔECE base − ΔECE KD, PTQ INT8 | bilateral | exploratoria |
+| | | | | **H4d** | ΔECE base − ΔECE KD, QAT INT8 | bilateral | exploratoria |
+| OE4 | Determinar si el alumno KD con PTQ no es inferior al base con QAT | **P5** | ¿KD + PTQ alcanza a base + QAT? | **H5** | mAP50 (KD + PTQ INT8) − mAP50 (base + QAT INT8) | no inferioridad, δ = 0.010 | **confirmatoria** |
+| OE5 | Medir la eficiencia en GPU y CPU | — | Descriptivo | — | latencia, FPS, MB | — | — |
 
-| Pregunta | Hipótesis | Estadístico D | H0 | H1 | Tipo |
-|---|---|---|---|---|---|
-| P1 | **H1a** | dmAP50_base − dmAP50_KD, PTQ INT8 | D = 0 | D ≠ 0 | bilateral, IC 95 % |
-| P1 | **H1b** | dmAP50_base − dmAP50_KD, QAT INT8 | D = 0 | D ≠ 0 | bilateral, IC 95 % |
-| P2 | **H2a** | ECE_base − ECE_KD, PTQ INT8 | D = 0 | D ≠ 0 | bilateral, IC 95 % |
-| P2 | **H2b** | ECE_base − ECE_KD, QAT INT8 | D = 0 | D ≠ 0 | bilateral, IC 95 % |
-| P3 | **H3** | mAP50(KD + PTQ INT8) − mAP50(base + QAT INT8) | D ≤ −δ | D > −δ | no inferioridad, unilateral, δ = 0.010, IC 90 % |
+Relación entre P1, P2 y P3: **H2 = H1 + H3** (la ventaja del KD cuantizado es su ventaja en FP32 más su menor
+pérdida).
 
 Cómo se contrastan:
+- **Familia confirmatoria** (5 contrastes, α global = 0.05, corrección de Holm): H3a, H3b, H4a, H4b y H5. Son los
+  mismos 5 contrastes fijados antes de ver test (antes llamados H1a, H1b, H2a, H2b y H3).
+- **Exploratorias** (H1, H2a, H2b, H4c, H4d; agregadas el 2026-11-02, después de ver test en India y antes en Japón):
+  solo IC 95 % y signos por semilla, sin valor p.
 - **Bootstrap pareado:** B = 1 000 remuestreos con reemplazo de las imágenes de test (semilla 42), con los mismos
   índices para todos los modelos. Cada diferencia se calcula por semilla (base_s vs. KD_s, s = 0, 1, 2) y se promedia
   sobre las 3 semillas.
 - **Valor p (bootstrap centrado, Efron y Tibshirani, 1993):**
   - bilateral: p = (1 + #{ |D\*_b − D_obs| ≥ |D_obs| }) / (B + 1)
-  - H3: p = (1 + #{ D\*_b − D_obs ≥ D_obs + δ }) / (B + 1)
-- **Holm** sobre los 5 valores p (se reportan p crudo y p ajustado). H3 concluye no inferioridad si el límite inferior
+  - H5: p = (1 + #{ D\*_b − D_obs ≥ D_obs + δ }) / (B + 1)
+- **Holm** sobre los 5 valores p (se reportan p crudo y p ajustado). H5 concluye no inferioridad si el límite inferior
   del IC 90 % supera −δ.
 - **Consistencia entre semillas:** signo de D en cada semilla (p. ej., "2/3 semillas positivas"), descriptivo.
-- **Exploratorios** (IC 95 %, sin valor p): AP@0.5 de D40, dmAP con mAP@0.5:0.95, mAP sin D10, pérdida del maestro
-  frente a los alumnos, FP16 frente a FP32, precisión y recall en INT8.
-- **Japón (D9):** misma familia y misma corrección de Holm, por separado; la coincidencia entre datasets se reporta
-  de forma descriptiva.
+- **Otros exploratorios** (E01–E18, IC 95 %, sin valor p): AP@0.5 de D40, dmAP con mAP@0.5:0.95, mAP sin D10,
+  pérdida del maestro frente a los alumnos, FP16 frente a FP32, precisión y recall en INT8, PTQ-MO y OpenVINO.
+- **Japón (D9):** mismas hipótesis y misma corrección de Holm, por separado; la coincidencia entre datasets se
+  reporta de forma descriptiva.
 
 Resultados de India: [Fase 7](#fase-7--estadística-india) y Tabla VII en [Fase 9](#fase-9--tablas-y-figura-del-paper).
 
@@ -139,8 +145,11 @@ Todos los modelos con letterbox cuadrado 640×640 y batch 1; pérdida = FP32 −
 | Maestro YOLO11m | 0.329 | 0.178 (colapso de confianzas) | — | — | — | — |
 
 - Con la PTQ de TensorRT (Ultralytics), el alumno KD pierde algo menos (2/3 semillas); con QAT, algo más.
-- Casi toda la ganancia de la QAT viene del esquema de cuantización de ModelOpt (Q/DQ explícito, pesos por
-  canal): el control sin ajuste fino ya pierde casi lo mismo que la QAT.
+- Casi toda la ganancia de la QAT viene del esquema de cuantización de ModelOpt (Q/DQ explícito), no del ajuste
+  fino: el control sin ajuste fino ya pierde casi lo mismo que la QAT. Ese esquema cuantiza casi las mismas
+  convoluciones que la PTQ implícita (81 frente a 79 de 88), pero deja más cómputo en FP16 (~41 % de las capas de
+  cómputo en INT8, frente a ~65 %), lo que también explica su ~15 % más de latencia. Es una observación
+  descriptiva: el mecanismo no se aisló.
 - FP16 no pierde nada, y OpenVINO INT8 (NNCF) casi no pierde (≤ 0.3 puntos).
 - El maestro colapsa con la PTQ de TensorRT por valores extremos en las activaciones de su cabeza (ver
   "Exploraciones").
@@ -457,16 +466,23 @@ python -m src.eval.bootstrap               # bootstrap pareado D7 (configs/stats
 La mAP de cada réplica usa los aciertos exactos de Ultralytics por imagen y su misma `ap_per_class`; sin remuestreo
 reproduce la mAP de Ultralytics (máx. |Δ| = 0.000005).
 
-| H | Pregunta | D observado | Intervalo | p (Holm) | Decisión |
-|---|---|---|---|---|---|
-| H1a | ¿KD pierde menos mAP@0.5 con PTQ INT8? | +0.004 | IC95 [−0.007, +0.015] | 1.00 | no significativo (2/3 semillas a favor de KD) |
-| H1b | ¿KD pierde menos mAP@0.5 con QAT INT8? | −0.005 | IC95 [−0.020, +0.015] | 1.00 | no significativo (0/3) |
-| H2a | ¿KD tiene mejor ECE con PTQ INT8? | −0.016 | IC95 [−0.031, +0.013] | 1.00 | no significativo (1/3) |
-| H2b | ¿KD tiene mejor ECE con QAT INT8? | −0.008 | IC95 [−0.027, +0.014] | 1.00 | no significativo (1/3) |
-| H3 | ¿KD + PTQ no es inferior a base + QAT (δ = 0.01)? | −0.019 | IC90 [−0.033, −0.009] | 1.00 | no se demuestra; base + QAT es mejor |
+| P | H | Tipo | Pregunta | D observado | Intervalo | p (Holm) | Lectura |
+|---|---|---|---|---|---|---|---|
+| P1 | H1 | expl. | ¿KD mejor en FP32? | +0.006 | IC95 [−0.014, +0.016] | — | leve, no concluyente (2/3 semillas) |
+| P2 | H2a | expl. | ¿KD + PTQ > base + PTQ? | +0.010 | IC95 [−0.007, +0.019] | — | tendencia a favor de KD (3/3 semillas), IC con el 0 |
+| P2 | H2b | expl. | ¿KD + QAT > base + QAT? | +0.001 | IC95 [−0.015, +0.013] | — | sin diferencia (1/3) |
+| P3 | H3a | conf. | ¿KD pierde menos con PTQ? | +0.004 | IC95 [−0.007, +0.015] | 1.00 | no rechaza H0 (2/3) |
+| P3 | H3b | conf. | ¿KD pierde menos con QAT? | −0.005 | IC95 [−0.020, +0.015] | 1.00 | no rechaza H0 (0/3) |
+| P4 | H4a | conf. | ¿KD con mejor ECE (PTQ)? | −0.016 | IC95 [−0.031, +0.013] | 1.00 | no rechaza H0 (1/3) |
+| P4 | H4b | conf. | ¿KD con mejor ECE (QAT)? | −0.008 | IC95 [−0.027, +0.014] | 1.00 | no rechaza H0 (1/3) |
+| P4 | H4c | expl. | ¿Menor deterioro del ECE (PTQ)? | −0.007 | IC95 [−0.031, +0.021] | — | sin diferencia (1/3) |
+| P4 | H4d | expl. | ¿Menor deterioro del ECE (QAT)? | +0.001 | IC95 [−0.027, +0.018] | — | sin diferencia (2/3) |
+| P5 | H5 | conf. | ¿KD + PTQ no inferior a base + QAT (δ = 0.01)? | −0.019 | IC90 [−0.033, −0.009] | 1.00 | no se demuestra; base + QAT es mejor |
 
-En India la KD no reduce de forma significativa la pérdida por cuantización ni mejora la calibración, y un alumno
-KD con PTQ no alcanza a un alumno base con QAT. Detalle y exploratorios en `results/tables/hypothesis_tests.csv` y
+En India la KD no reduce la pérdida por cuantización ni mejora la calibración (confirmatorias), y un alumno KD con
+PTQ no alcanza a un alumno base con QAT. Tras la PTQ, el alumno KD queda por encima del base en las 3 semillas
+(H2a, exploratoria), pero esa ventaja viene sobre todo de su ventaja en FP32 (H2 = H1 + H3: +0.010 ≈ +0.006 +
+0.004). Detalle en `results/tables/hypothesis_tests.csv` (recalculado el 2026-11-02 con la nomenclatura P1–P5) y
 `results/tables/exploratory.csv`.
 
 ### Fase 8 — Eficiencia (India)
@@ -512,7 +528,7 @@ CSV, en Markdown y como filas LaTeX (`.tex`) listas para pegar entre `\midrule` 
 | `tabla_III_particion` | III. Partición de los subconjuntos | `dataset_stats.csv` (India y Japón) |
 | `tabla_V_fp32` | V. Desempeño en FP32 | `metrics.csv`, TensorRT FP32 |
 | `tabla_VI_cuantizacion` | VI. Pérdida por cuantización y calibración (GPU) | `delta_map.csv` y `metrics.csv` |
-| `tabla_VII_contrastes` | VII. Contrastes confirmatorios | `hypothesis_tests.csv` (p con Holm) |
+| `tabla_VII_contrastes` | VII. Hipótesis por pregunta (P1–P5) | `hypothesis_tests.csv` (p con Holm en las confirmatorias) |
 | `tabla_VIII_eficiencia` | VIII. Eficiencia de los alumnos | `efficiency.csv` (India, 6 alumnos) |
 
 Las columnas de Japón quedan en "—" hasta que existan sus resultados; en J9 basta con volver a ejecutar el script.
@@ -524,7 +540,7 @@ La Tabla VIII usa la latencia **media** (FPS = 1000 / media, D8). En CPU la dist
 
 #### Tablas de resultados (India, test)
 
-Copia de `results/tables/paper/*.md` (2026-10-31). Japón se agrega en J9.
+Copia de `results/tables/paper/*.md` (2026-10-31; Tabla VII del 2026-11-02). Japón se agrega en J9.
 
 **Tabla III. Partición de los subconjuntos** (columnas de clase: instancias; Fondo: imágenes sin daños)
 
@@ -563,16 +579,20 @@ ECE del modelo cuantizado; PTQ-MO: PTQ con ModelOpt, control sin ajuste fino de 
 | Destilado | PTQ-MO INT8 | 0.013 ± 0.003 | 0.112 ± 0.062 |
 | Destilado | QAT INT8 | 0.011 ± 0.009 | 0.085 ± 0.032 |
 
-**Tabla VII. Contrastes confirmatorios** (D > 0 favorece al destilado; p ajustado con Holm; IC 95 % para H1a–H2b e
-IC 90 % para H3, no inferioridad con δ = 0.010)
+**Tabla VII. Hipótesis por pregunta** (D > 0 favorece al destilado; C: confirmatoria, p ajustado con Holm; E: exploratoria, solo IC; IC 95 %, salvo H5: IC 90 %, no inferioridad con δ = 0.010)
 
-| Hip. | Diferencia D | D [IC] | p (Holm) | Decisión |
-|---|---|---|---|---|
-| H1a | ΔmAP base − KD (PTQ) | +0.004 [−0.007, +0.015] | 1.000 | no rechaza H0 |
-| H1b | ΔmAP base − KD (QAT) | −0.005 [−0.020, +0.015] | 1.000 | no rechaza H0 |
-| H2a | ECE base − KD (PTQ) | −0.016 [−0.031, +0.013] | 1.000 | no rechaza H0 |
-| H2b | ECE base − KD (QAT) | −0.008 [−0.027, +0.014] | 1.000 | no rechaza H0 |
-| H3 | mAP KD+PTQ − base+QAT | −0.019 [−0.033, −0.009] | 1.000 | no rechaza H0 (no se demuestra no inferioridad) |
+| P | Hip. | Tipo | D [IC] IN | p IN | D [IC] JP | p JP | Rep. |
+|---|---|---|---|---|---|---|---|
+| P1 | H1 | E | +0.006 [−0.014, +0.016] | — | — | — | — |
+| P2 | H2a | E | +0.010 [−0.007, +0.019] | — | — | — | — |
+| P2 | H2b | E | +0.001 [−0.015, +0.013] | — | — | — | — |
+| P3 | H3a | C | +0.004 [−0.007, +0.015] | 1.000 | — | — | — |
+| P3 | H3b | C | −0.005 [−0.020, +0.015] | 1.000 | — | — | — |
+| P4 | H4a | C | −0.016 [−0.031, +0.013] | 1.000 | — | — | — |
+| P4 | H4b | C | −0.008 [−0.027, +0.014] | 1.000 | — | — | — |
+| P4 | H4c | E | −0.007 [−0.031, +0.021] | — | — | — | — |
+| P4 | H4d | E | +0.001 [−0.027, +0.018] | — | — | — | — |
+| P5 | H5 | C | −0.019 [−0.033, −0.009] | 1.000 | — | — | — |
 
 **Tabla VIII. Eficiencia de los alumnos** (batch 1, 640 × 640; latencia de inferencia, media ± d.e. entre los 6
 alumnos, cada uno con 3 repeticiones de 500 medidas; FPS = 1000 / latencia media; reloj SM fijado en 2505 MHz)

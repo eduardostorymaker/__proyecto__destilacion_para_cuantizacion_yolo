@@ -1,0 +1,202 @@
+modelo,orden,capa,max_abs,p99_99,cociente
+maestro,0,model.0.conv,7.78,5.699,1.37
+maestro,1,model.1.conv,369.192,92.645,3.99
+maestro,2,model.2.cv1.conv,115.926,33.395,3.47
+maestro,3,model.2.m.0.cv1.conv,51.989,24.82,2.09
+maestro,4,model.2.m.0.m.0.cv1.conv,31.811,17.01,1.87
+maestro,5,model.2.m.0.m.0.cv2.conv,53.731,27.971,1.92
+maestro,6,model.2.m.0.m.1.cv1.conv,38.614,22.444,1.72
+maestro,7,model.2.m.0.m.1.cv2.conv,20.842,10.409,2.0
+maestro,8,model.2.m.0.cv2.conv,23.321,9.524,2.45
+maestro,9,model.2.m.0.cv3.conv,20.948,11.528,1.82
+maestro,10,model.2.cv2.conv,34.251,14.443,2.37
+maestro,11,model.3.conv,35.756,12.402,2.88
+maestro,12,model.4.cv1.conv,14.599,5.789,2.52
+maestro,13,model.4.m.0.cv1.conv,11.089,5.269,2.1
+maestro,14,model.4.m.0.m.0.cv1.conv,15.561,8.825,1.76
+maestro,15,model.4.m.0.m.0.cv2.conv,10.245,4.945,2.07
+maestro,16,model.4.m.0.m.1.cv1.conv,18.659,9.831,1.9
+maestro,17,model.4.m.0.m.1.cv2.conv,10.675,4.254,2.51
+maestro,18,model.4.m.0.cv2.conv,3.766,2.001,1.88
+maestro,19,model.4.m.0.cv3.conv,16.03,9.241,1.73
+maestro,20,model.4.cv2.conv,11.528,4.838,2.38
+maestro,21,model.5.conv,19.585,7.433,2.63
+maestro,22,model.6.cv1.conv,10.797,4.161,2.59
+maestro,23,model.6.m.0.cv1.conv,9.962,4.527,2.2
+maestro,24,model.6.m.0.m.0.cv1.conv,10.964,6.336,1.73
+maestro,25,model.6.m.0.m.0.cv2.conv,8.498,4.292,1.98
+maestro,26,model.6.m.0.m.1.cv1.conv,14.752,7.597,1.94
+maestro,27,model.6.m.0.m.1.cv2.conv,9.881,4.285,2.31
+maestro,28,model.6.m.0.cv2.conv,2.816,1.327,2.12
+maestro,29,model.6.m.0.cv3.conv,18.593,6.871,2.71
+maestro,30,model.6.cv2.conv,14.215,5.829,2.44
+maestro,31,model.7.conv,20.26,7.793,2.6
+maestro,32,model.8.cv1.conv,10.49,3.846,2.73
+maestro,33,model.8.m.0.cv1.conv,10.92,5.274,2.07
+maestro,34,model.8.m.0.m.0.cv1.conv,9.489,6.189,1.53
+maestro,35,model.8.m.0.m.0.cv2.conv,11.862,6.94,1.71
+maestro,36,model.8.m.0.m.1.cv1.conv,15.06,8.241,1.83
+maestro,37,model.8.m.0.m.1.cv2.conv,14.773,7.564,1.95
+maestro,38,model.8.m.0.cv2.conv,3.361,1.156,2.91
+maestro,39,model.8.m.0.cv3.conv,11.622,6.06,1.92
+maestro,40,model.8.cv2.conv,14.698,6.456,2.28
+maestro,41,model.9.cv1.conv,27.363,10.028,2.73
+maestro,42,model.9.cv2.conv,48.536,27.862,1.74
+maestro,43,model.10.cv1.conv,6.713,3.582,1.87
+maestro,44,model.10.m.0.attn.qkv.conv,8.91,5.12,1.74
+maestro,45,model.10.m.0.attn.pe.conv,2.667,1.496,1.78
+maestro,46,model.10.m.0.attn.proj.conv,6.421,3.372,1.9
+maestro,47,model.10.m.0.ffn.0.conv,3.363,1.675,2.01
+maestro,48,model.10.m.0.ffn.1.conv,4.254,0.847,5.02
+maestro,49,model.10.cv2.conv,26.851,12.691,2.12
+maestro,50,model.13.cv1.conv,11.142,5.282,2.11
+maestro,51,model.13.m.0.cv1.conv,8.39,3.702,2.27
+maestro,52,model.13.m.0.m.0.cv1.conv,13.435,6.462,2.08
+maestro,53,model.13.m.0.m.0.cv2.conv,12.656,5.248,2.41
+maestro,54,model.13.m.0.m.1.cv1.conv,17.19,9.397,1.83
+maestro,55,model.13.m.0.m.1.cv2.conv,8.823,4.458,1.98
+maestro,56,model.13.m.0.cv2.conv,3.211,1.024,3.14
+maestro,57,model.13.m.0.cv3.conv,15.495,6.756,2.29
+maestro,58,model.13.cv2.conv,11.222,4.621,2.43
+maestro,59,model.16.cv1.conv,11.249,5.323,2.11
+maestro,60,model.16.m.0.cv1.conv,8.558,3.455,2.48
+maestro,61,model.16.m.0.m.0.cv1.conv,9.863,5.297,1.86
+maestro,62,model.16.m.0.m.0.cv2.conv,15.595,6.343,2.46
+maestro,63,model.16.m.0.m.1.cv1.conv,18.499,11.829,1.56
+maestro,64,model.16.m.0.m.1.cv2.conv,14.256,6.551,2.18
+maestro,65,model.16.m.0.cv2.conv,4.713,1.495,3.15
+maestro,66,model.16.m.0.cv3.conv,21.074,9.872,2.13
+maestro,67,model.16.cv2.conv,13.067,4.264,3.06
+maestro,68,model.17.conv,14.782,5.317,2.78
+maestro,69,model.19.cv1.conv,8.277,3.789,2.18
+maestro,70,model.19.m.0.cv1.conv,13.497,4.814,2.8
+maestro,71,model.19.m.0.m.0.cv1.conv,13.242,4.361,3.04
+maestro,72,model.19.m.0.m.0.cv2.conv,17.133,7.349,2.33
+maestro,73,model.19.m.0.m.1.cv1.conv,23.023,10.709,2.15
+maestro,74,model.19.m.0.m.1.cv2.conv,33.776,5.93,5.7
+maestro,75,model.19.m.0.cv2.conv,4.144,1.557,2.66
+maestro,76,model.19.m.0.cv3.conv,29.42,8.799,3.34
+maestro,77,model.19.cv2.conv,36.158,9.124,3.96
+maestro,78,model.20.conv,68.552,8.305,8.25
+maestro,79,model.22.cv1.conv,50.711,5.728,8.85
+maestro,80,model.22.m.0.cv1.conv,22.585,4.111,5.49
+maestro,81,model.22.m.0.m.0.cv1.conv,6.78,3.548,1.91
+maestro,82,model.22.m.0.m.0.cv2.conv,13.378,7.199,1.86
+maestro,83,model.22.m.0.m.1.cv1.conv,14.764,8.057,1.83
+maestro,84,model.22.m.0.m.1.cv2.conv,11.876,5.475,2.17
+maestro,85,model.22.m.0.cv2.conv,11.185,1.176,9.52
+maestro,86,model.22.m.0.cv3.conv,22.365,5.909,3.79
+maestro,87,model.22.cv2.conv,63.06,7.253,8.69
+maestro,88,model.23.cv2.0.0.conv,81.899,14.667,5.58
+maestro,89,model.23.cv2.0.1.conv,288.665,18.437,15.66
+maestro,90,model.23.cv2.0.2,182.874,17.503,10.45
+maestro,91,model.23.cv2.1.0.conv,518.925,35.741,14.52
+maestro,92,model.23.cv2.1.1.conv,465.177,21.184,21.96
+maestro,93,model.23.cv2.1.2,212.081,14.807,14.32
+maestro,94,model.23.cv2.2.0.conv,975.668,43.28,22.54
+maestro,95,model.23.cv2.2.1.conv,1014.776,28.353,35.79
+maestro,96,model.23.cv2.2.2,181.762,14.709,12.36
+maestro,97,model.23.cv3.0.0.0.conv,8.557,1.331,6.43
+maestro,98,model.23.cv3.0.0.1.conv,15.503,6.853,2.26
+maestro,99,model.23.cv3.0.1.0.conv,10.205,2.239,4.56
+maestro,100,model.23.cv3.0.1.1.conv,79.061,10.227,7.73
+maestro,101,model.23.cv3.0.2,274.914,42.637,6.45
+maestro,102,model.23.cv3.1.0.0.conv,13.537,1.572,8.61
+maestro,103,model.23.cv3.1.0.1.conv,36.909,4.749,7.77
+maestro,104,model.23.cv3.1.1.0.conv,16.67,2.244,7.43
+maestro,105,model.23.cv3.1.1.1.conv,239.271,17.084,14.01
+maestro,106,model.23.cv3.1.2,161.124,60.279,2.67
+maestro,107,model.23.cv3.2.0.0.conv,10.112,1.442,7.01
+maestro,108,model.23.cv3.2.0.1.conv,90.665,5.676,15.97
+maestro,109,model.23.cv3.2.1.0.conv,21.601,2.092,10.32
+maestro,110,model.23.cv3.2.1.1.conv,474.346,12.829,36.97
+maestro,111,model.23.cv3.2.2,262.048,41.153,6.37
+maestro,112,model.23.dfl.conv,14.115,12.532,1.13
+alumno base_s0,0,model.0.conv,10.609,9.055,1.17
+alumno base_s0,1,model.1.conv,152.678,70.424,2.17
+alumno base_s0,2,model.2.cv1.conv,179.648,79.942,2.25
+alumno base_s0,3,model.2.m.0.cv1.conv,135.831,72.817,1.87
+alumno base_s0,4,model.2.m.0.cv2.conv,27.308,13.845,1.97
+alumno base_s0,5,model.2.cv2.conv,122.856,51.871,2.37
+alumno base_s0,6,model.3.conv,60.796,30.699,1.98
+alumno base_s0,7,model.4.cv1.conv,31.952,14.608,2.19
+alumno base_s0,8,model.4.m.0.cv1.conv,23.653,13.315,1.78
+alumno base_s0,9,model.4.m.0.cv2.conv,20.498,12.08,1.7
+alumno base_s0,10,model.4.cv2.conv,19.56,10.315,1.9
+alumno base_s0,11,model.5.conv,16.724,10.4,1.61
+alumno base_s0,12,model.6.cv1.conv,11.667,6.068,1.92
+alumno base_s0,13,model.6.m.0.cv1.conv,8.829,5.133,1.72
+alumno base_s0,14,model.6.m.0.m.0.cv1.conv,13.333,8.697,1.53
+alumno base_s0,15,model.6.m.0.m.0.cv2.conv,8.411,4.951,1.7
+alumno base_s0,16,model.6.m.0.m.1.cv1.conv,18.043,12.339,1.46
+alumno base_s0,17,model.6.m.0.m.1.cv2.conv,8.702,4.554,1.91
+alumno base_s0,18,model.6.m.0.cv2.conv,3.638,2.146,1.7
+alumno base_s0,19,model.6.m.0.cv3.conv,17.917,10.429,1.72
+alumno base_s0,20,model.6.cv2.conv,12.534,7.51,1.67
+alumno base_s0,21,model.7.conv,16.116,7.869,2.05
+alumno base_s0,22,model.8.cv1.conv,8.514,3.91,2.18
+alumno base_s0,23,model.8.m.0.cv1.conv,7.655,4.863,1.57
+alumno base_s0,24,model.8.m.0.m.0.cv1.conv,7.788,5.557,1.4
+alumno base_s0,25,model.8.m.0.m.0.cv2.conv,11.998,6.948,1.73
+alumno base_s0,26,model.8.m.0.m.1.cv1.conv,21.605,12.117,1.78
+alumno base_s0,27,model.8.m.0.m.1.cv2.conv,12.449,8.424,1.48
+alumno base_s0,28,model.8.m.0.cv2.conv,2.894,1.6,1.81
+alumno base_s0,29,model.8.m.0.cv3.conv,16.016,8.706,1.84
+alumno base_s0,30,model.8.cv2.conv,12.763,6.596,1.93
+alumno base_s0,31,model.9.cv1.conv,17.329,9.711,1.78
+alumno base_s0,32,model.9.cv2.conv,41.393,33.993,1.22
+alumno base_s0,33,model.10.cv1.conv,4.068,2.458,1.65
+alumno base_s0,34,model.10.m.0.attn.qkv.conv,14.028,7.652,1.83
+alumno base_s0,35,model.10.m.0.attn.pe.conv,7.746,4.067,1.9
+alumno base_s0,36,model.10.m.0.attn.proj.conv,7.163,3.749,1.91
+alumno base_s0,37,model.10.m.0.ffn.0.conv,4.865,2.734,1.78
+alumno base_s0,38,model.10.m.0.ffn.1.conv,2.143,1.082,1.98
+alumno base_s0,39,model.10.cv2.conv,26.314,11.846,2.22
+alumno base_s0,40,model.13.cv1.conv,12.078,5.737,2.11
+alumno base_s0,41,model.13.m.0.cv1.conv,9.918,6.55,1.51
+alumno base_s0,42,model.13.m.0.cv2.conv,13.697,7.273,1.88
+alumno base_s0,43,model.13.cv2.conv,13.936,6.747,2.07
+alumno base_s0,44,model.16.cv1.conv,10.33,5.641,1.83
+alumno base_s0,45,model.16.m.0.cv1.conv,14.224,9.502,1.5
+alumno base_s0,46,model.16.m.0.cv2.conv,15.969,10.068,1.59
+alumno base_s0,47,model.16.cv2.conv,15.796,8.168,1.93
+alumno base_s0,48,model.17.conv,14.914,8.935,1.67
+alumno base_s0,49,model.19.cv1.conv,5.958,3.3,1.81
+alumno base_s0,50,model.19.m.0.cv1.conv,8.099,5.11,1.58
+alumno base_s0,51,model.19.m.0.cv2.conv,12.982,7.281,1.78
+alumno base_s0,52,model.19.cv2.conv,12.015,6.942,1.73
+alumno base_s0,53,model.20.conv,9.714,6.685,1.45
+alumno base_s0,54,model.22.cv1.conv,8.313,3.992,2.08
+alumno base_s0,55,model.22.m.0.cv1.conv,7.693,4.734,1.63
+alumno base_s0,56,model.22.m.0.m.0.cv1.conv,5.269,2.935,1.8
+alumno base_s0,57,model.22.m.0.m.0.cv2.conv,11.083,5.747,1.93
+alumno base_s0,58,model.22.m.0.m.1.cv1.conv,13.658,8.583,1.59
+alumno base_s0,59,model.22.m.0.m.1.cv2.conv,7.119,4.692,1.52
+alumno base_s0,60,model.22.m.0.cv2.conv,1.57,0.885,1.77
+alumno base_s0,61,model.22.m.0.cv3.conv,12.084,7.182,1.68
+alumno base_s0,62,model.22.cv2.conv,9.673,5.596,1.73
+alumno base_s0,63,model.23.cv2.0.0.conv,23.931,13.839,1.73
+alumno base_s0,64,model.23.cv2.0.1.conv,102.343,42.228,2.42
+alumno base_s0,65,model.23.cv2.0.2,197.125,87.377,2.26
+alumno base_s0,66,model.23.cv2.1.0.conv,28.131,13.172,2.14
+alumno base_s0,67,model.23.cv2.1.1.conv,96.568,43.425,2.22
+alumno base_s0,68,model.23.cv2.1.2,120.184,56.359,2.13
+alumno base_s0,69,model.23.cv2.2.0.conv,28.407,18.074,1.57
+alumno base_s0,70,model.23.cv2.2.1.conv,39.822,19.149,2.08
+alumno base_s0,71,model.23.cv2.2.2,62.735,30.832,2.03
+alumno base_s0,72,model.23.cv3.0.0.0.conv,4.844,2.565,1.89
+alumno base_s0,73,model.23.cv3.0.0.1.conv,15.878,9.508,1.67
+alumno base_s0,74,model.23.cv3.0.1.0.conv,6.768,3.652,1.85
+alumno base_s0,75,model.23.cv3.0.1.1.conv,13.708,7.945,1.73
+alumno base_s0,76,model.23.cv3.0.2,31.077,26.882,1.16
+alumno base_s0,77,model.23.cv3.1.0.0.conv,5.55,2.36,2.35
+alumno base_s0,78,model.23.cv3.1.0.1.conv,17.272,9.065,1.91
+alumno base_s0,79,model.23.cv3.1.1.0.conv,8.785,4.574,1.92
+alumno base_s0,80,model.23.cv3.1.1.1.conv,10.289,5.252,1.96
+alumno base_s0,81,model.23.cv3.1.2,32.618,26.504,1.23
+alumno base_s0,82,model.23.cv3.2.0.0.conv,2.63,1.435,1.83
+alumno base_s0,83,model.23.cv3.2.0.1.conv,14.367,6.587,2.18
+alumno base_s0,84,model.23.cv3.2.1.0.conv,7.445,3.249,2.29
+alumno base_s0,85,model.23.cv3.2.1.1.conv,7.193,3.094,2.32
+alumno base_s0,86,model.23.cv3.2.2,69.348,29.894,2.32
+alumno base_s0,87,model.23.dfl.conv,13.626,12.591,1.08

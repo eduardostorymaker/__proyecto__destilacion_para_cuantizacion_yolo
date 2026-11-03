@@ -39,8 +39,20 @@ __pycache__/
 .env.*
 
 # ---------------------------------------------------------------------------
-# Office temporales
+# Office: documentos (presentaciones, guiones) y temporales, en cualquier carpeta
 # ---------------------------------------------------------------------------
+*.ppt
+*.pptx
+*.pptm
+*.pps
+*.ppsx
+*.potx
+*.doc
+*.docx
+*.docm
+*.dotx
+*.odt
+*.odp
 ~$*
 
 # ---------------------------------------------------------------------------

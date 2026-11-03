@@ -4,14 +4,27 @@
 
 Paper IEEE (máx. 10 págs. de contenido, sin contar los apéndices), en LaTeX: `paper/main.tex`. La fuente de
 verdad del diseño y de los resultados es ESTE repositorio (configs, LOG, CSV); el paper se escribió por separado y
-debe ajustarse al repo, no al revés. No editar el paper: el usuario lo corrige (lista de correcciones pendientes
-en la memoria del proyecto, hasta que el usuario avise).
-Tres preguntas:
+debe ajustarse al repo, no al revés. Editar el paper solo cuando el usuario lo pida. Correcciones y resultados de
+India aplicados el 2026-10-31 (a pedido del usuario); lo de Japón queda marcado con `\pend{...}` hasta J9.
+**Objetivo general:** evaluar si la destilación de conocimiento (KD) mejora el desempeño y la calibración de un
+YOLO11n cuantizado a INT8 con PTQ y QAT, y si reduce su pérdida respecto de la versión FP32, en la detección de
+daños viales.
 
-- **P1.** ¿La destilación de conocimiento (KD) reduce la pérdida de mAP por cuantización INT8 en
-  un YOLO11n para daños viales?
-- **P2.** ¿El alumno KD conserva mejor calibración (ECE) tras cuantizar?
-- **P3.** ¿Un alumno KD con PTQ alcanza el desempeño de un alumno base con QAT?
+Objetivos específicos, preguntas e hipótesis (replanteados el 2026-11-02; una pregunta por objetivo, Pk ↔ Hk;
+detalle estadístico en D7):
+
+| OE | Objetivo específico | Pregunta | Hipótesis |
+|---|---|---|---|
+| OE1 | Entrenar YOLO11n con y sin KD (maestro YOLO11m) en India y Japón y comparar su desempeño en FP32 | **P1.** ¿La KD mejora al alumno en FP32? | H1 (expl.) |
+| OE2 | Cuantizar ambos alumnos a INT8 con PTQ y QAT y comparar su mAP cuantizada y su pérdida respecto de FP32, global y en baches | **P2.** ¿El alumno KD cuantizado supera al alumno base cuantizado con el mismo método? | H2a, H2b (expl.) |
+| OE2 | (mismo) | **P3.** ¿La KD reduce la pérdida de mAP por cuantización? | H3a, H3b (conf.) |
+| OE3 | Evaluar si el alumno KD tiene mejor calibración (ECE) tras cuantizar y si la cuantización la deteriora menos | **P4.** ¿El alumno KD cuantizado está mejor calibrado y su calibración se deteriora menos? | H4a, H4b (conf.); H4c, H4d (expl.) |
+| OE4 | Determinar si el alumno KD con PTQ no es inferior al alumno base con QAT | **P5.** ¿Un alumno KD con PTQ alcanza a un alumno base con QAT? | H5 (conf.) |
+| OE5 | Medir la eficiencia en GPU y CPU | — (descriptivo) | — |
+
+Antes (hasta el 2026-11-01) había tres preguntas: P1 (pérdida) = actual P3, P2 (calibración) = actual P4 y
+P3 (KD + PTQ frente a base + QAT) = actual P5. La pregunta de nivel (P2) faltaba: la KD puede "mejorar la
+cuantización" por nivel (mAP cuantizada) o por robustez (menor pérdida); se cumple H2 = H1 + H3.
 
 **Brecha:** en detección de daños viales basada en imágenes, nadie compara un detector destilado
 vs. no destilado tras cuantizar, ni evalúa QAT. Antecedente más cercano fuera del dominio:
@@ -170,9 +183,6 @@ Nota: la búsqueda de antecedentes en Scopus se reporta con PRISMA 2020 (apéndi
 - `results/metrics.csv`: una fila por modelo/semilla/formato/precisión.
 
 ### D7. Estadística (preespecificada)
-Este análisis se fija ANTES de tener resultados. Los valores de alfa, delta, B y las hipótesis NO
-se cambian después de ver los datos. Si durante la implementación algo obliga a cambiarlo,
-preguntar primero.
 
 Descriptivo:
 - Media ± d.e. de las 3 semillas para todas las métricas y modelos.
@@ -194,27 +204,36 @@ Bootstrap pareado:
 Definiciones:
 - dmAP50 = mAP@0.5(FP32) − mAP@0.5(cuantizado), 4 clases, dentro del mismo motor (D6).
 - ECE según D6 (conf ≥ 0.25, IoU ≥ 0.5, 15 intervalos).
-- Convención de signo: D > 0 favorece al alumno KD en H1 y H2.
+- ΔECE = ECE(INT8) − ECE(FP32), dentro de TensorRT (deterioro de la calibración al cuantizar).
+- Convención de signo: D > 0 favorece SIEMPRE al alumno KD.
 
-Familia confirmatoria (5 contrastes, alfa global = 0.05, corrección Holm):
-- H1a: D = dmAP50_base − dmAP50_kd, PTQ INT8.   H0: D = 0 (bilateral)
-- H1b: D = dmAP50_base − dmAP50_kd, QAT INT8.   H0: D = 0 (bilateral)
-- H2a: D = ECE_base − ECE_kd, PTQ INT8.         H0: D = 0 (bilateral)
-- H2b: D = ECE_base − ECE_kd, QAT INT8.         H0: D = 0 (bilateral)
-- H3 : D = mAP50(kd + PTQ INT8) − mAP50(base + QAT INT8). No inferioridad con margen
-  delta = 0.010 (1 punto de mAP@0.5). H0: D ≤ −delta ; H1: D > −delta (unilateral).
-Si la QAT se descarta por problemas técnicos, la familia se reduce a H1a y H2a (Holm con 2
-contrastes) y se reporta así en el paper.
+Hipótesis (nomenclatura del 2026-11-02, Pk ↔ Hk; definidas en `configs/stats.yaml`, sección `hipotesis`):
+- H1 : D = mAP50_kd − mAP50_base, FP32.                         P1 · OE1 · exploratoria
+- H2a: D = mAP50_kd − mAP50_base, PTQ INT8.                     P2 · OE2 · exploratoria
+- H2b: D = mAP50_kd − mAP50_base, QAT INT8.                     P2 · OE2 · exploratoria
+- H3a: D = dmAP50_base − dmAP50_kd, PTQ INT8. H0: D = 0.        P3 · OE2 · confirmatoria, bilateral (antes H1a)
+- H3b: D = dmAP50_base − dmAP50_kd, QAT INT8. H0: D = 0.        P3 · OE2 · confirmatoria, bilateral (antes H1b)
+- H4a: D = ECE_base − ECE_kd, PTQ INT8. H0: D = 0.              P4 · OE3 · confirmatoria, bilateral (antes H2a)
+- H4b: D = ECE_base − ECE_kd, QAT INT8. H0: D = 0.              P4 · OE3 · confirmatoria, bilateral (antes H2b)
+- H4c: D = ΔECE_base − ΔECE_kd, PTQ INT8.                       P4 · OE3 · exploratoria
+- H4d: D = ΔECE_base − ΔECE_kd, QAT INT8.                       P4 · OE3 · exploratoria
+- H5 : D = mAP50(kd + PTQ INT8) − mAP50(base + QAT INT8). No inferioridad con margen delta = 0.010
+  (1 punto de mAP@0.5). H0: D ≤ −delta ; H1: D > −delta (unilateral).  P5 · OE4 · confirmatoria (antes H3)
+Familia confirmatoria (5 contrastes, alfa global = 0.05, corrección Holm): H3a, H3b, H4a, H4b, H5 (los mismos 5
+contrastes fijados antes de ver test; solo cambió su nombre). Si la QAT se descarta por problemas técnicos, la familia
+se reduce a H3a y H4a (Holm con 2 contrastes). Las exploratorias (H1, H2a, H2b, H4c, H4d; opción B del
+2026-11-02) se agregaron después de ver test en India y antes en Japón: solo IC 95 % y signos por semilla, sin
+valor p ni afirmación de significancia (ver protocol_deviations.csv).
 
-Valor p (bootstrap centrado, Efron y Tibshirani, 1993):
+Valor p (bootstrap centrado, Efron y Tibshirani, 1993), solo confirmatorias:
 - Bilateral:      p = (1 + #{ |D*_b − D_obs| ≥ |D_obs| }) / (B + 1)
-- H3 unilateral:  p = (1 + #{ D*_b − D_obs ≥ D_obs + delta }) / (B + 1)
+- H5 unilateral:  p = (1 + #{ D*_b − D_obs ≥ D_obs + delta }) / (B + 1)
   donde D_obs es el estadístico en la muestra original y D*_b en la réplica b.
 - Corrección de Holm sobre los valores p de la familia; reportar p crudo y p ajustado.
 
 Intervalos:
-- IC 95 % por percentiles (2.5 y 97.5) para H1a–H2b.
-- Para H3: IC 90 % bilateral; se concluye no inferioridad si su límite inferior es mayor que
+- IC 95 % por percentiles (2.5 y 97.5) para las bilaterales y las exploratorias.
+- Para H5: IC 90 % bilateral; se concluye no inferioridad si su límite inferior es mayor que
   −delta (equivale al contraste unilateral al 5 %).
 
 Consistencia entre semillas:
@@ -226,8 +245,9 @@ dmAP con mAP@0.5:0.95, mAP sin D10, dmAP del maestro frente a los alumnos, FP16 
 precisión y recall en INT8.
 
 Salidas:
-- `results/tables/hypothesis_tests.csv` con columnas: hipotesis, estadistico, D_obs, IC_inf,
-  IC_sup, p_crudo, p_holm, decision (rechaza H0 / no rechaza H0), signos_por_semilla.
+- `results/tables/hypothesis_tests.csv` con columnas: hipotesis, pregunta, objetivo, tipo, contraste, estadistico,
+  D_obs, IC_inf, IC_sup, nivel_IC, p_crudo y p_holm (vacíos en las exploratorias), decision, signos_por_semilla,
+  D_por_semilla, antes (nombre previo).
 - `results/tables/exploratory.csv` con estadístico, D_obs, IC_inf, IC_sup.
 
 La Fase 7 se implementa y se prueba con predicciones de modelos de prueba (p. ej., los de la
@@ -352,7 +372,8 @@ proyecto/
 - [x] Fase 5 — PTQ (2026-10-18; 33 exportaciones TRT/OV; ~65 % de capas de cómputo en INT8)
 - [x] Fase 5b — QAT (2026-10-19; 6 controles ModelOpt PTQ + 6 QAT, evaluados en test con `src/eval/evaluate.py`)
 - [x] Fase 6 — Evaluación (2026-10-18, PTQ: `results/metrics.csv`; los modelos QAT se evaluarán con el mismo `src/eval/evaluate.py`)
-- [x] Fase 7 — Estadística (2026-10-20, India: ninguna hipótesis rechaza H0 tras Holm; `results/tables/hypothesis_tests.csv`)
+- [x] Fase 7 — Estadística (2026-10-20, India: ninguna hipótesis rechaza H0 tras Holm; `results/tables/hypothesis_tests.csv`;
+  2026-11-02: hipótesis renombradas a H1–H5 y exploratorias H1, H2a, H2b, H4c, H4d agregadas; bootstrap recalculado)
 - [x] Fase 8 — Eficiencia (2026-10-22, India: `results/tables/efficiency.csv`; reloj GPU fijado en 2505 MHz con `scripts/benchmark.ps1`)
 - [x] Fase 9 — Tablas y figuras (2026-10-31, India: `python -m src.report.paper_tables` → `results/tables/paper/`; columnas JP en J9)
 - [x] J1 — Datos Japón (2026-10-18; auditoría en `results/japan/tables/data_audit.csv`)

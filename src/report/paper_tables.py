@@ -1,4 +1,5 @@
-"""Fase 9 / J9: tablas III, V, VI, VII y VIII del paper (paper/main.tex) y figura de mAP vs. método de cuantización.
+"""Fase 9 / J9: tablas III, V, VI, VII y VIII del paper (paper/main.tex), figura de mAP vs. método de cuantización
+y figura de activaciones del maestro frente al alumno (desde activaciones_maestro_alumno.csv).
 
 Solo lee resultados ya calculados (no evalúa nada ni usa la GPU):
   - Tabla III (partición):        dataset_stats.csv de cada dataset (Fase 1 / J1).
@@ -151,7 +152,8 @@ def tabla_contrastes(datos: dict) -> pd.DataFrame:
         raise SystemExit("No hay hypothesis_tests.csv en ningún dataset (Fase 7 / J7).")
     filas = []
     for _, r in base.iterrows():
-        fila, decisiones = [r["hipotesis"]], []
+        confirmatoria = r["tipo"] == "confirmatoria"
+        fila, decisiones = [r["pregunta"], r["hipotesis"], "C" if confirmatoria else "E"], []
         for ds in CFG["datasets"]:
             h = hip[ds]
             q = None if h is None else h[h["hipotesis"] == r["hipotesis"]]
@@ -162,14 +164,16 @@ def tabla_contrastes(datos: dict) -> pd.DataFrame:
             x = q.iloc[0]
             fila.append(f"{num(x['D_obs'], DEC['map'], True)} [{num(x['IC_inf'], DEC['map'], True)}, "
                         f"{num(x['IC_sup'], DEC['map'], True)}]")
-            fila.append(num(x["p_holm"], DEC["p"]))
-            decisiones.append((x["decision"] == "rechaza H0", math.copysign(1, x["D_obs"])))
+            fila.append(num(x["p_holm"], DEC["p"]) if confirmatoria else VACIO)
+            # confirmatoria: rechaza H0 tras Holm; exploratoria: el IC no contiene el 0
+            efecto = (x["decision"] == "rechaza H0") if confirmatoria else (x["IC_inf"] > 0 or x["IC_sup"] < 0)
+            decisiones.append((efecto, math.copysign(1, x["D_obs"])))
         if any(d is None for d in decisiones):
             fila.append(VACIO)
         else:
             fila.append("sí" if all(d[0] for d in decisiones) and len({d[1] for d in decisiones}) == 1 else "no")
         filas.append(fila)
-    cols = ["Hip."]
+    cols = ["P", "Hip.", "Tipo"]
     for etq in CFG["datasets"].values():
         cols += [f"D [IC] {etq}", f"p {etq}"]
     return pd.DataFrame(filas, columns=[*cols, "Rep."])
@@ -234,6 +238,41 @@ def figura(dataset: str, m: pd.DataFrame) -> None:
     print(f"Figura: {salida}.png/.pdf")
 
 
+def figura_activaciones() -> None:
+    """Cociente máx/p99.99 de las activaciones por convolución, maestro frente a alumno (India).
+
+    Lee la tabla que calcula src.report.figuras_presentacion (figura 5); no vuelve a pasar imágenes por la red.
+    """
+    a = CFG["presentacion"]["activaciones"]
+    d = leer(a["tabla"])
+    if d is None:
+        return
+    plt.rcParams.update({"font.size": 8, "axes.spines.top": False, "axes.spines.right": False})
+    fig, eje = plt.subplots(figsize=(3.5, 2.1))
+    colores = {"alumno": "#2a78d6", "maestro": "#1baf7a"}  # slots 1 y 3 de la paleta (como en la presentación)
+    etiquetas = {"alumno": "Alumno YOLO11n (base, s0)", "maestro": "Maestro YOLO11m"}
+    for modelo in ("alumno", "maestro"):
+        q = d[d["modelo"].str.startswith(modelo)].sort_values("orden")  # "maestro" y "alumno base_s0"
+        x = q["orden"] / (len(q) - 1)
+        if modelo == "maestro":
+            cab = x[q["capa"].str.startswith(a["capa_cabeza"] + ".").values]
+            eje.axvspan(cab.min(), cab.max(), color="#f1f0ec", lw=0, zorder=0, label="Cabeza de detección")
+        eje.scatter(x, q["cociente"], s=5, color=colores[modelo], zorder=2,
+                    label=f"{etiquetas[modelo]} (máx. {q['cociente'].max():.1f})")
+    eje.set_yscale("log")
+    eje.axhline(1, color="#b5b4ae", lw=0.6)
+    eje.set_xlabel("Posición de la convolución (0 = entrada, 1 = salida)")
+    eje.set_ylabel("máx |a| / p99.99")
+    eje.legend(frameon=False, loc="upper left", fontsize=6.5)
+    fig.tight_layout()
+    salida = resolver_ruta(CFG["salidas"]["figura_activaciones"])
+    salida.parent.mkdir(parents=True, exist_ok=True)
+    for ext in ("png", "pdf"):
+        fig.savefig(salida.with_suffix(f".{ext}"), dpi=300, bbox_inches="tight")
+    plt.close(fig)
+    print(f"Figura: {salida}.png/.pdf")
+
+
 # ---------------------------------------------------------------- main
 
 def main() -> None:
@@ -247,14 +286,16 @@ def main() -> None:
             "Media ± d.e. de 3 semillas. PTQ-MO: PTQ con ModelOpt (control sin ajuste fino de la QAT). "
             "ECE en blanco: ninguna detección con confianza ≥ 0.25 (ECE no definido).")
     guardar("tabla_VII_contrastes", tabla_contrastes(datos),
-            "p ajustado con Holm dentro de cada subconjunto. IC 95 % (H1a–H2b) e IC 90 % (H3, δ = 0.010). "
-            "Rep.: significativo y del mismo signo en ambos subconjuntos.")
+            "D > 0 favorece al alumno destilado. C: confirmatoria (p ajustado con Holm dentro de cada subconjunto); "
+            "E: exploratoria (solo IC). IC 95 %, salvo H5 (IC 90 %, no inferioridad con δ = 0.010). "
+            "Rep.: C significativa, o E con IC sin el 0, y del mismo signo en ambos subconjuntos.")
     guardar("tabla_VIII_eficiencia", tabla_eficiencia(datos),
             "Batch 1, 640 × 640, latencia de inferencia (media ± d.e. entre los 6 alumnos, cada uno con 3 "
             "repeticiones de 500 medidas); FPS = 1000 / latencia media; reloj SM de la GPU fijado en 2505 MHz.")
     for ds in CFG["datasets"]:
         if datos[ds]["metricas"] is not None:
             figura(ds, datos[ds]["metricas"])
+    figura_activaciones()
 
 
 if __name__ == "__main__":

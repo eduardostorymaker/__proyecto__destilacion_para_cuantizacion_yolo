@@ -11,13 +11,20 @@ Implementación:
   - El ECE de cada réplica usa los pares (confianza, acierto) por imagen de src/eval/ece.py, repetidos igual.
   - La réplica 0 es la muestra original (sin remuestreo): debe reproducir la mAP de Ultralytics (< 0.001).
 
-Contrastes (D > 0 favorece al alumno KD en H1 y H2; cada diferencia se calcula por semilla, emparejando base_s
-con kd_s, y se promedia sobre las 3 semillas):
-  H1a  dmAP50_base − dmAP50_kd, PTQ INT8         (bilateral)
-  H1b  dmAP50_base − dmAP50_kd, QAT INT8         (bilateral)
-  H2a  ECE_base − ECE_kd, PTQ INT8               (bilateral)
-  H2b  ECE_base − ECE_kd, QAT INT8               (bilateral)
-  H3   mAP50(KD + PTQ INT8) − mAP50(base + QAT INT8); no inferioridad con margen δ (unilateral)
+Hipótesis (configs/stats.yaml, sección `hipotesis`; D > 0 favorece SIEMPRE al alumno KD; cada diferencia se
+calcula por semilla, emparejando base_s con kd_s, y se promedia sobre las 3 semillas):
+  H1   mAP50 KD − mAP50 base, FP32                          (P1, exploratoria)
+  H2a  mAP50 KD − mAP50 base, PTQ INT8                      (P2, exploratoria)
+  H2b  mAP50 KD − mAP50 base, QAT INT8                      (P2, exploratoria)
+  H3a  dmAP50 base − dmAP50 KD, PTQ INT8                    (P3, confirmatoria, bilateral)
+  H3b  dmAP50 base − dmAP50 KD, QAT INT8                    (P3, confirmatoria, bilateral)
+  H4a  ECE base − ECE KD, PTQ INT8                          (P4, confirmatoria, bilateral)
+  H4b  ECE base − ECE KD, QAT INT8                          (P4, confirmatoria, bilateral)
+  H4c  ΔECE base − ΔECE KD, PTQ INT8 (ΔECE = INT8 − FP32)   (P4, exploratoria)
+  H4d  ΔECE base − ΔECE KD, QAT INT8                        (P4, exploratoria)
+  H5   mAP50 (KD + PTQ INT8) − mAP50 (base + QAT INT8)      (P5, confirmatoria, no inferioridad con margen δ)
+Solo las confirmatorias llevan valor p y corrección de Holm; las exploratorias, IC 95 % y signos por semilla.
+H3a–H5 son los antiguos H1a, H1b, H2a, H2b y H3 (renombrados el 2026-11-02; mismos estadísticos y valores p).
 
 Uso (desde la raíz del proyecto, en WSL):
     python -m src.eval.bootstrap
@@ -199,54 +206,66 @@ def main() -> None:
     S, mot = cfg["semillas"], cfg["motor"]
     v = lambda g, s, prec, met: vals[(f"student_{g}_s{s}", mot, prec)][met]  # noqa: E731
     dmap = lambda g, s, prec, met="mAP50": v(g, s, cfg["fp32"], met) - v(g, s, prec, met)  # noqa: E731
+    fp, ptq, qat = cfg["fp32"], cfg["ptq_int8"], cfg["qat_int8"]
+    dece = lambda g, s, prec: v(g, s, prec, "ECE") - v(g, s, fp, "ECE")  # noqa: E731  deterioro del ECE al cuantizar
     porsemilla = {
-        "H1a": [dmap("base", s, cfg["ptq_int8"]) - dmap("kd", s, cfg["ptq_int8"]) for s in S],
-        "H1b": [dmap("base", s, cfg["qat_int8"]) - dmap("kd", s, cfg["qat_int8"]) for s in S],
-        "H2a": [v("base", s, cfg["ptq_int8"], "ECE") - v("kd", s, cfg["ptq_int8"], "ECE") for s in S],
-        "H2b": [v("base", s, cfg["qat_int8"], "ECE") - v("kd", s, cfg["qat_int8"], "ECE") for s in S],
-        "H3": [v("kd", s, cfg["ptq_int8"], "mAP50") - v("base", s, cfg["qat_int8"], "mAP50") for s in S],
+        "H1": [v("kd", s, fp, "mAP50") - v("base", s, fp, "mAP50") for s in S],
+        "H2a": [v("kd", s, ptq, "mAP50") - v("base", s, ptq, "mAP50") for s in S],
+        "H2b": [v("kd", s, qat, "mAP50") - v("base", s, qat, "mAP50") for s in S],
+        "H3a": [dmap("base", s, ptq) - dmap("kd", s, ptq) for s in S],
+        "H3b": [dmap("base", s, qat) - dmap("kd", s, qat) for s in S],
+        "H4a": [v("base", s, ptq, "ECE") - v("kd", s, ptq, "ECE") for s in S],
+        "H4b": [v("base", s, qat, "ECE") - v("kd", s, qat, "ECE") for s in S],
+        "H4c": [dece("base", s, ptq) - dece("kd", s, ptq) for s in S],
+        "H4d": [dece("base", s, qat) - dece("kd", s, qat) for s in S],
+        "H5": [v("kd", s, ptq, "mAP50") - v("base", s, qat, "mAP50") for s in S],
     }
-    descripcion = {
-        "H1a": "dmAP50_base − dmAP50_kd, PTQ INT8 (TensorRT)",
-        "H1b": "dmAP50_base − dmAP50_kd, QAT INT8 (TensorRT)",
-        "H2a": "ECE_base − ECE_kd, PTQ INT8",
-        "H2b": "ECE_base − ECE_kd, QAT INT8",
-        "H3": f"mAP50(KD + PTQ INT8) − mAP50(base + QAT INT8); no inferioridad, δ = {cfg['delta']}",
-    }
+    meta = cfg["hipotesis"]
+    assert set(meta) == set(porsemilla), "configs/stats.yaml (hipotesis) no coincide con los contrastes del código"
     sal["distribuciones"].mkdir(parents=True, exist_ok=True)
     B, delta = cfg["B"], cfg["delta"]
     resultados = {}
     for h, lista in porsemilla.items():
+        m = meta[h]
         dist = np.mean(lista, axis=0)                  # promedio sobre semillas, réplica a réplica
         np.save(sal["distribuciones"] / f"{h}.npy", dist)
         d_obs, d_b = dist[0], dist[1:]
-        if h == "H3":
+        if m["contraste"] == "no_inferioridad":
             p = (1 + np.sum(d_b - d_obs >= d_obs + delta)) / (B + 1)
-            nivel = cfg["ic_h3"]
+            nivel = cfg["ic_no_inferioridad"]
             signos = f"{sum(x[0] > -delta for x in lista)}/{len(S)} semillas con D > −δ"
         else:
             p = (1 + np.sum(np.abs(d_b - d_obs) >= abs(d_obs))) / (B + 1)
             nivel = cfg["ic"]
             signos = f"{sum(x[0] > 0 for x in lista)}/{len(S)} semillas positivas"
         lo, hi = np.percentile(d_b, [100 * (1 - nivel) / 2, 100 * (1 + nivel) / 2])
-        resultados[h] = {"hipotesis": h, "estadistico": descripcion[h], "D_obs": d_obs, "IC_inf": lo, "IC_sup": hi,
-                         "nivel_IC": nivel, "p_crudo": p, "signos_por_semilla": signos,
+        resultados[h] = {"hipotesis": h, "pregunta": m["pregunta"], "objetivo": m["objetivo"], "tipo": m["tipo"],
+                         "contraste": m["contraste"], "estadistico": m["estadistico"], "D_obs": d_obs, "IC_inf": lo,
+                         "IC_sup": hi, "nivel_IC": nivel, "p_crudo": p if m["tipo"] == "confirmatoria" else None,
+                         "signos_por_semilla": signos, "antes": m.get("antes", ""),
                          "D_por_semilla": "; ".join(f"s{s}: {x[0]:+.4f}" for s, x in zip(S, lista))}
-    p_holm = holm([resultados[h]["p_crudo"] for h in resultados])
+    # Holm solo sobre la familia confirmatoria
+    conf = [h for h in resultados if resultados[h]["tipo"] == "confirmatoria"]
+    p_holm = dict(zip(conf, holm([resultados[h]["p_crudo"] for h in conf])))
     filas_h = []
-    for (h, r), ph in zip(resultados.items(), p_holm):
-        rechaza = ph < cfg["alfa"]
-        if h == "H3":
+    for h, r in resultados.items():
+        if h not in p_holm:
+            dec, ph = "exploratoria: solo IC, sin valor p", None
+        elif r["contraste"] == "no_inferioridad":
+            rechaza = p_holm[h] < cfg["alfa"]
             dec = ("rechaza H0: KD + PTQ no inferior a base + QAT" if rechaza
                    else "no rechaza H0: no se demuestra la no inferioridad")
             dec += f" (límite inferior del IC 90 % {'>' if r['IC_inf'] > -delta else '≤'} −δ)"
+            ph = p_holm[h]
         else:
-            dec = "rechaza H0" if rechaza else "no rechaza H0"
-        filas_h.append({k: (round(x, 5) if isinstance(x, float) else x) for k, x in r.items()}
-                       | {"p_holm": round(ph, 5), "decision": dec})
-    escribir(sal["hipotesis"], [{c: f[c] for c in ("hipotesis", "estadistico", "D_obs", "IC_inf", "IC_sup", "nivel_IC",
-                                                    "p_crudo", "p_holm", "decision", "signos_por_semilla",
-                                                    "D_por_semilla")} for f in filas_h])
+            ph = p_holm[h]
+            dec = "rechaza H0" if ph < cfg["alfa"] else "no rechaza H0"
+        filas_h.append({k: (round(float(x), 5) if isinstance(x, (float, np.floating)) else ("" if x is None else x))
+                        for k, x in r.items()} | {"p_holm": "" if ph is None else round(ph, 5), "decision": dec})
+    escribir(sal["hipotesis"], [{c: f[c] for c in ("hipotesis", "pregunta", "objetivo", "tipo", "contraste",
+                                                    "estadistico", "D_obs", "IC_inf", "IC_sup", "nivel_IC", "p_crudo",
+                                                    "p_holm", "decision", "signos_por_semilla", "D_por_semilla",
+                                                    "antes")} for f in filas_h])
 
     # Exploratorios (IC 95 %, sin valor p)
     def media(lista):
@@ -260,7 +279,7 @@ def main() -> None:
         "dmAP50-95_base − dmAP50-95_kd, QAT INT8": media([dmap("base", s, "qat_int8", "mAP50_95") - dmap("kd", s, "qat_int8", "mAP50_95") for s in S]),
         "sin D10: dmAP50_base − dmAP50_kd, PTQ INT8": media([dmap("base", s, "int8", "mAP50_sin_D10") - dmap("kd", s, "int8", "mAP50_sin_D10") for s in S]),
         "sin D10: dmAP50_base − dmAP50_kd, QAT INT8": media([dmap("base", s, "qat_int8", "mAP50_sin_D10") - dmap("kd", s, "qat_int8", "mAP50_sin_D10") for s in S]),
-        "sin D10: H3 (KD + PTQ − base + QAT)": media([v("kd", s, "int8", "mAP50_sin_D10") - v("base", s, "qat_int8", "mAP50_sin_D10") for s in S]),
+        "sin D10: H5 (KD + PTQ − base + QAT)": media([v("kd", s, "int8", "mAP50_sin_D10") - v("base", s, "qat_int8", "mAP50_sin_D10") for s in S]),
         "dmAP50 maestro − media dmAP50 base, PTQ INT8": (tch("fp32") - tch("int8")) - media([dmap("base", s, "int8") for s in S]),
         "dmAP50 maestro − media dmAP50 KD, PTQ INT8": (tch("fp32") - tch("int8")) - media([dmap("kd", s, "int8") for s in S]),
         "dmAP50 FP16, base (FP32 − FP16)": media([dmap("base", s, "fp16") for s in S]),
@@ -300,11 +319,11 @@ def main() -> None:
          "nota": "réplica 0 = muestra original; 1..B = remuestreos"}, indent=2), encoding="utf-8")
 
     print(f"\nRéplicas con alguna clase ausente (excluida en todos los modelos): {afectadas} de {B}")
-    print("\n=== Familia confirmatoria (Holm) ===")
+    print("\n=== Hipótesis (confirmatorias con Holm; exploratorias solo con IC) ===")
     for f in filas_h:
-        print(f"{f['hipotesis']:<4} D_obs {f['D_obs']:+.4f}  IC{int(f['nivel_IC'] * 100)} [{f['IC_inf']:+.4f}, "
-              f"{f['IC_sup']:+.4f}]  p {f['p_crudo']:.4f}  p_holm {f['p_holm']:.4f}  → {f['decision']}  "
-              f"({f['signos_por_semilla']})")
+        p = f"p {f['p_crudo']:.4f}  p_holm {f['p_holm']:.4f}" if f["tipo"] == "confirmatoria" else "exploratoria"
+        print(f"{f['pregunta']} {f['hipotesis']:<4} D_obs {f['D_obs']:+.4f}  IC{int(f['nivel_IC'] * 100)} "
+              f"[{f['IC_inf']:+.4f}, {f['IC_sup']:+.4f}]  {p}  → {f['decision']}  ({f['signos_por_semilla']})")
     print("\n=== Exploratorios (IC 95 %) ===")
     for f in filas_e:
         print(f"{f['id']} {f['estadistico']:<56} {f['D_obs']:+.4f}  [{f['IC_inf']:+.4f}, {f['IC_sup']:+.4f}]")

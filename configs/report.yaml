@@ -30,8 +30,62 @@ plataformas:
 
 decimales: {map: 3, ece: 3, p: 3, ms: 2, mb: 1}
 
+# Figuras de apoyo para la presentación (python -m src.report.figuras_presentacion); solo India salvo la
+# distribución de clases, que compara ambos subconjuntos.
+presentacion:
+  salida: results/figures/presentacion
+  dpi: 200
+  fiabilidad:                  # diagrama de fiabilidad con los mismos parámetros del ECE (configs/eval.yaml)
+    metodos: [fp32, int8, qat_int8]
+    min_detecciones_intervalo: 10   # intervalos con menos detecciones no se dibujan (estimación inestable)
+  activaciones:                # cociente máx/p99.99 por convolución (diagnóstico del colapso del maestro, LOG 2026-10-18)
+    maestro: runs/teacher/teacher_s0/weights/best.pt
+    alumno: runs/students/student_base_s0/weights/best.pt
+    calib: configs/calib.yaml
+    n_imagenes: 100
+    cuantil: 0.9999
+    capa_cabeza: model.23        # Detect de YOLO11
+    tabla: results/tables/activaciones_maestro_alumno.csv
+
+# Ejemplos de detección para la presentación (python -m src.report.figura_detecciones). No vuelve a correr ningún
+# modelo: dibuja las predicciones de prueba ya guardadas en runs/eval/*/predictions.json (las mismas de la mAP y
+# el ECE). Una figura por comparación e imagen (GT | modelo A | modelo B), con las MISMAS imágenes en todas.
+# Van en el anexo de la presentación (base frente a KD con PTQ y con QAT, los modelos clave del paper).
+detecciones:
+  salida: results/figures/presentacion   # detecciones_{comparacion}_{imagen}.png
+  tabla: results/tables/detecciones_seleccion.csv
+  dpi: 200
+  conf_min: 0.25               # umbral para dibujar = el del ECE (configs/eval.yaml); la evaluación usa 0.001
+  iou_min: 0.5                 # acierto: IoU ≥ 0.5 y misma clase, emparejamiento greedy por confianza (como el ECE)
+  semilla: mediana             # por grupo, la semilla con la mAP@0.5 mediana en TRT FP32 (no la mejor); o 0, 1, 2
+  # Imágenes: vacío = selección automática por nivel de exactitud. Exactitud de una imagen = F1 por imagen
+  # (2·aciertos / (detecciones + cajas reales), conf ≥ conf_min) promediado sobre los modelos de las comparaciones;
+  # solo imágenes con ≥ min_cajas cajas reales. Se toma la imagen más cercana a cada percentil (empates por nombre).
+  # "baja" = percentil 10 y no el mínimo: el mínimo es F1 = 0 (ningún acierto) y no muestra nada.
+  # Para fijarlas a mano: imagenes: [India_000123, India_000456, India_000789]
+  imagenes: []
+  seleccion:
+    min_cajas: 3
+    percentiles: {alta: 100, media: 50, baja: 10}
+  paper:                       # una sola figura para el apéndice del paper: filas = imágenes, columnas = GT + modelos
+    salida: results/figures/detecciones_paper   # .png y .pdf
+    ancho_pulgadas: 7.0        # \textwidth del apéndice a una columna
+    alto_pulgadas: 5.2
+  comparaciones:               # nombre: [titulo, [grupo, formato, precision] del modelo A, ídem del modelo B]
+    kd_ptq: ["Base y KD con PTQ INT8 (P2, P3)", [base, tensorrt, int8], [kd, tensorrt, int8]]
+    kd_qat: ["Base y KD con QAT INT8 (P5)", [base, tensorrt, qat_int8], [kd, tensorrt, qat_int8]]
+
+# Figura del pipeline para el paper (python -m src.report.figura_pipeline): diagrama a lo ancho de la página
+# (figure* de IEEE, \textwidth ≈ 7.16 in). Los conteos son de diseño (iguales en IN y JP), no resultados.
+pipeline:
+  salida: results/figures/pipeline     # se escriben .pdf (vectorial) y .png
+  ancho_pulgadas: 7.16
+  alto_pulgadas: 3.5
+  dpi_png: 300
+
 salidas:
   tablas: results/tables/paper          # tabla_*.csv, tabla_*.md y tabla_*.tex (filas del tabular)
   figuras:                               # mAP vs. método de cuantización, una por dataset
     india: results/figures/map_vs_cuantizacion
     japan: results/japan/figures/map_vs_cuantizacion
+  figura_activaciones: results/figures/activaciones_maestro_alumno   # cociente máx/p99.99 (India), una columna

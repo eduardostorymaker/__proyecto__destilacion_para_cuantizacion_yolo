@@ -1,0 +1,13 @@
+comparacion,imagen,regla,f1_medio_imagen,modelo,mAP50_prueba,dmAP50_vs_fp32,ECE_prueba,AP50_D40_prueba,f1_modelo,n_gt,detecciones,aciertos,falsos_positivos,sin_detectar
+kd_ptq,India_001783,alta,0.9,student_base_s1_tensorrt_int8,0.27408,0.04185,0.0454,0.30741,0.8,3,2,2,0,1
+kd_ptq,India_001783,alta,0.9,student_kd_s2_tensorrt_int8,0.28141,0.03217,0.18768,0.34688,1.0,3,3,3,0,0
+kd_ptq,India_001156,media,0.3524,student_base_s1_tensorrt_int8,0.27408,0.04185,0.0454,0.30741,0.2857,6,1,1,0,5
+kd_ptq,India_001156,media,0.3524,student_kd_s2_tensorrt_int8,0.28141,0.03217,0.18768,0.34688,0.5714,6,8,4,4,2
+kd_ptq,India_003936,baja,0.0833,student_base_s1_tensorrt_int8,0.27408,0.04185,0.0454,0.30741,0.0,5,0,0,0,5
+kd_ptq,India_003936,baja,0.0833,student_kd_s2_tensorrt_int8,0.28141,0.03217,0.18768,0.34688,0.0,5,0,0,0,5
+kd_qat,India_001783,alta,0.9,student_base_s1_tensorrt_qat_int8,0.30584,0.01009,0.0596,0.3779,1.0,3,3,3,0,0
+kd_qat,India_001783,alta,0.9,student_kd_s2_tensorrt_qat_int8,0.30706,0.00652,0.12178,0.36656,0.8,3,2,2,0,1
+kd_qat,India_001156,media,0.3524,student_base_s1_tensorrt_qat_int8,0.30584,0.01009,0.0596,0.3779,0.2667,6,9,2,7,4
+kd_qat,India_001156,media,0.3524,student_kd_s2_tensorrt_qat_int8,0.30706,0.00652,0.12178,0.36656,0.2857,6,8,2,6,4
+kd_qat,India_003936,baja,0.0833,student_base_s1_tensorrt_qat_int8,0.30584,0.01009,0.0596,0.3779,0.3333,5,1,1,0,4
+kd_qat,India_003936,baja,0.0833,student_kd_s2_tensorrt_qat_int8,0.30706,0.00652,0.12178,0.36656,0.0,5,0,0,0,5

@@ -1,6 +1,11 @@
-hipotesis,estadistico,D_obs,IC_inf,IC_sup,nivel_IC,p_crudo,p_holm,decision,signos_por_semilla,D_por_semilla
-H1a,"dmAP50_base − dmAP50_kd, PTQ INT8 (TensorRT)",0.00373,-0.00725,0.0147,0.95,0.47053,1.0,no rechaza H0,2/3 semillas positivas,s0: +0.0145; s1: +0.0041; s2: -0.0073
-H1b,"dmAP50_base − dmAP50_kd, QAT INT8 (TensorRT)",-0.00474,-0.0201,0.01499,0.95,0.56344,1.0,no rechaza H0,0/3 semillas positivas,s0: -0.0013; s1: -0.0114; s2: -0.0015
-H2a,"ECE_base − ECE_kd, PTQ INT8",-0.01633,-0.0313,0.01315,0.95,0.24875,1.0,no rechaza H0,1/3 semillas positivas,s0: +0.0069; s1: -0.0242; s2: -0.0317
-H2b,"ECE_base − ECE_kd, QAT INT8",-0.00803,-0.02688,0.01412,0.95,0.42458,1.0,no rechaza H0,1/3 semillas positivas,s0: +0.0043; s1: -0.0049; s2: -0.0235
-H3,"mAP50(KD + PTQ INT8) − mAP50(base + QAT INT8); no inferioridad, δ = 0.01",-0.01896,-0.03287,-0.00856,0.9,0.84715,1.0,no rechaza H0: no se demuestra la no inferioridad (límite inferior del IC 90 % ≤ −δ),1/3 semillas con D > −δ,s0: -0.0332; s1: -0.0218; s2: -0.0019
+hipotesis,pregunta,objetivo,tipo,contraste,estadistico,D_obs,IC_inf,IC_sup,nivel_IC,p_crudo,p_holm,decision,signos_por_semilla,D_por_semilla,antes
+H1,P1,OE1,exploratoria,bilateral,"mAP50 KD − mAP50 base, FP32",0.00599,-0.01361,0.01644,0.95,,,"exploratoria: solo IC, sin valor p",2/3 semillas positivas,s0: -0.0132; s1: +0.0059; s2: +0.0252,
+H2a,P2,OE2,exploratoria,bilateral,"mAP50 KD − mAP50 base, PTQ INT8",0.00972,-0.00687,0.01897,0.95,,,"exploratoria: solo IC, sin valor p",3/3 semillas positivas,s0: +0.0013; s1: +0.0100; s2: +0.0178,
+H2b,P2,OE2,exploratoria,bilateral,"mAP50 KD − mAP50 base, QAT INT8",0.00125,-0.01501,0.01257,0.95,,,"exploratoria: solo IC, sin valor p",1/3 semillas positivas,s0: -0.0145; s1: -0.0055; s2: +0.0237,
+H3a,P3,OE2,confirmatoria,bilateral,"dmAP50 base − dmAP50 KD, PTQ INT8",0.00373,-0.00725,0.0147,0.95,0.47053,1.0,no rechaza H0,2/3 semillas positivas,s0: +0.0145; s1: +0.0041; s2: -0.0073,H1a
+H3b,P3,OE2,confirmatoria,bilateral,"dmAP50 base − dmAP50 KD, QAT INT8",-0.00474,-0.0201,0.01499,0.95,0.56344,1.0,no rechaza H0,0/3 semillas positivas,s0: -0.0013; s1: -0.0114; s2: -0.0015,H1b
+H4a,P4,OE3,confirmatoria,bilateral,"ECE base − ECE KD, PTQ INT8",-0.01633,-0.0313,0.01315,0.95,0.24875,1.0,no rechaza H0,1/3 semillas positivas,s0: +0.0069; s1: -0.0242; s2: -0.0317,H2a
+H4b,P4,OE3,confirmatoria,bilateral,"ECE base − ECE KD, QAT INT8",-0.00803,-0.02688,0.01412,0.95,0.42458,1.0,no rechaza H0,1/3 semillas positivas,s0: +0.0043; s1: -0.0049; s2: -0.0235,H2b
+H4c,P4,OE3,exploratoria,bilateral,"ΔECE base − ΔECE KD, PTQ INT8",-0.00714,-0.03115,0.0208,0.95,,,"exploratoria: solo IC, sin valor p",1/3 semillas positivas,s0: +0.0116; s1: -0.0137; s2: -0.0193,
+H4d,P4,OE3,exploratoria,bilateral,"ΔECE base − ΔECE KD, QAT INT8",0.00116,-0.02702,0.01822,0.95,,,"exploratoria: solo IC, sin valor p",2/3 semillas positivas,s0: +0.0090; s1: +0.0056; s2: -0.0111,
+H5,P5,OE4,confirmatoria,no_inferioridad,mAP50 (KD + PTQ INT8) − mAP50 (base + QAT INT8),-0.01896,-0.03287,-0.00856,0.9,0.84715,1.0,no rechaza H0: no se demuestra la no inferioridad (límite inferior del IC 90 % ≤ −δ),1/3 semillas con D > −δ,s0: -0.0332; s1: -0.0218; s2: -0.0019,H3
